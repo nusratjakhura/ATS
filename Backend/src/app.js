@@ -17,8 +17,10 @@ app.use(cookieParser())
 
 //high-level routes
 import hrRoute from './routes/hr.route.js'
+import authRoute from './routes/auth.route.js'
 
 app.use('/api/hr', hrRoute)
+app.use('/api/auth',authRoute)
 
 
 export {app};
