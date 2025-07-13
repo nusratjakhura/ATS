@@ -21,9 +21,10 @@ const hrSchema = new mongoose.Schema({
     companyName:{
         type:String,
         required:true,
+        lowercase:true,
         trim:true
     }
 
 },{timestamps:true})
 
-export const User = mongoose.model("HR",hrSchema);
+export const HR = mongoose.model("HR",hrSchema);
