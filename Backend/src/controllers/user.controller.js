@@ -1,0 +1,4 @@
+
+const registerUser = ()=>{}
+
+export {registerUser}
