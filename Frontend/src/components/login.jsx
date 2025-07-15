@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link } from "react-router-dom";
 import Navigation from '../navBar/navigation';
-
+import axios from 'axios';
 
 export default function LoginForm() {
   const [formData, setFormData] = useState({
@@ -19,18 +19,43 @@ export default function LoginForm() {
     }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit =async (e) => {
+    // e.preventDefault();
+    // console.log('Login Data:', formData);
+    // const form=e.target;
+    // if(!form.checkValidity()){
+    //     e.stopPropagation();
+    // }
+    // else{
+    //     const loggedUser=JSON.parse(localStorage.getItem("user"));
+    //     console.log(loggedUser);
+    //     alert("login succesfully")
+    // }
+    // setValidated(true);
+
     e.preventDefault();
-    console.log('Login Data:', formData);
-    const form=e.target;
-    if(!form.checkValidity()){
-        e.stopPropagation();
+    const form = e.target;
+
+    if (!form.checkValidity()) {
+      e.stopPropagation();
+    } else {
+      try {
+        //API call to your backend
+        const response = await axios.post('/api/hr/login', formData);
+
+        // Save token or session if provided
+        if (response.data.token) {
+          localStorage.setItem('token', response.data.token);
+        }
+
+        alert('Login successful');
+        navigate('/dashboard'); // 🔁 Redirect after login
+      } catch (error) {
+        console.error('Login error:', error);
+        alert(error.response?.data?.message || 'Invalid credentials');
+      }
     }
-    else{
-        const loggedUser=JSON.parse(localStorage.getItem("user"));
-        console.log(loggedUser);
-        alert("login succesfully")
-    }
+
     setValidated(true);
     
   };
