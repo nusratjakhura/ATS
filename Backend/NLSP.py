@@ -2,6 +2,8 @@ import re
 import spacy
 import pandas as pd # for skill csv
 import fitz # for text extraction
+import json
+import sys
 
 # Load the spaCy NLP model
 nlp = spacy.load("en_core_web_sm")
@@ -10,7 +12,7 @@ nlp = spacy.load("en_core_web_sm")
 ruler = nlp.add_pipe("entity_ruler", before="ner")
 
 # Define skill patterns
-skill_df = pd.read_csv('Backend/skills.csv')
+skill_df = pd.read_csv('./skills.csv')
 skills = skill_df['skill'].tolist()
 patterns = [{"label": "SKILL", "pattern": skill} for skill in skills]
 ruler.add_patterns(patterns)
@@ -59,8 +61,19 @@ def parse_resume_pdf(pdf_path):
 
 # Example usage (for testing only, not run on import)
 if __name__ == "__main__":
-    pdf_path = "Backend/Sample.pdf"  
-    if pdf_path:
+    # Check if file path is provided as command line argument
+    if len(sys.argv) < 2:
+        error_result = {"error": "No file path provided. Usage: python NLSP.py <file_path>"}
+        print(json.dumps(error_result))
+        sys.exit(1)
+    
+    pdf_path = sys.argv[1]  # Get file path from command line argument
+    
+    try:
         result = parse_resume_pdf(pdf_path)
-        for key, value in result.items():
-            print(f"{key}: {value}")
+        # Output result as JSON
+        print(json.dumps(result, indent=2))
+    except Exception as e:
+        error_result = {"error": f"Failed to process file: {str(e)}"}
+        print(json.dumps(error_result))
+        sys.exit(1)
