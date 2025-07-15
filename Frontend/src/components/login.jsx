@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { Link } from "react-router-dom";
 import Navigation from '../navBar/navigation';
-
+import { useNavigate } from 'react-router-dom';
 
 export default function LoginForm() {
+  const navigate = useNavigate();
+  
   const [formData, setFormData] = useState({
     email: '',
     password: ''
@@ -30,6 +32,7 @@ export default function LoginForm() {
         const loggedUser=JSON.parse(localStorage.getItem("user"));
         console.log(loggedUser);
         alert("login succesfully")
+        navigate('/profile')
     }
     setValidated(true);
     
