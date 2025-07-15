@@ -1,6 +1,7 @@
 import { useState } from "react";
 import Navigation from '../navBar/navigation';
 import { useNavigate } from "react-router-dom";
+import axios from "axios";
 
 export default function RegisterForm() {
   const [formData, setFormData] = useState({
@@ -20,17 +21,38 @@ export default function RegisterForm() {
     }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async(e) => {
+    // e.preventDefault(); 
+    // const form = e.target;
+    // if (!form.checkValidity()) {
+    //   e.stopPropagation();
+    // } 
+    // else {
+    //   console.log("Submitted Data:", JSON.stringify(formData));
+    //   localStorage.setItem("user", JSON.stringify(formData));
+    //   navigate("/login");
+    // }
+    // setValidated(true);
+
     e.preventDefault(); 
     const form = e.target;
+
     if (!form.checkValidity()) {
       e.stopPropagation();
-    } 
-    else {
-      console.log("Submitted Data:", JSON.stringify(formData));
-      localStorage.setItem("user", JSON.stringify(formData));
-      navigate("/login");
+    } else {
+      try {
+        //  Call your backend API
+        const response = await axios.post('/api/hr/register', formData);
+
+        console.log("Registration Success:", response.data);
+        alert("Registered successfully!");
+        navigate("/login/hr");
+      } catch (error) {
+        console.error("Registration error:", error);
+        alert(error.response?.data?.message || "Registration failed");
+      }
     }
+
     setValidated(true);
   };
 
