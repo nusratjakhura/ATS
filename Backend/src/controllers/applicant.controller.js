@@ -3,6 +3,7 @@ import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { uploadFile } from "../utils/fileUpload.js";
 import { Applicant } from "../models/applicant.model.js";
+import { JobDescription } from "../models/jobDescription.model.js";
 import { exec } from "child_process";
 import { promisify } from "util";
 import path from "path";
@@ -20,19 +21,44 @@ const uploadResume = asyncHandler(async (req, res) => {
     throw new ApiError(400, "No files were uploaded");
   }
 
+  // Get jobId from request body
+  const { jobId } = req.body;
+  
+  // Get job details and HR company name
+  let jdSkills = [];
+  let companyName = "Unknown";
+  
+  try {
+    if (jobId) {
+      const jobDetails = await JobDescription.findById(jobId).populate('createdBy');
+      if (jobDetails) {
+        jdSkills = jobDetails.requiredSkills || [];
+        
+        // Get company name from HR who created the job
+        if (jobDetails.createdBy && jobDetails.createdBy.companyName) {
+          companyName = jobDetails.createdBy.companyName;
+        }
+      }
+    }
+  } catch (error) {
+    console.log("Error fetching job details:", error);
+  }
+
   try {
     const uploadResults = [];
     const uploadedUrls = [];
 
     // Iterate over each file & either call python function here
     for (const file of cvs) {
-      // Call Python script to extract data from the resume
       let extractedData = {};
       try {
-        const pythonScriptPath = path.join(process.cwd(), "NLSP.py");
-        const command = `python3 "${pythonScriptPath}" "${file.path}"`;
-
+        const pythonScriptPath = path.join(process.cwd(), "Model", "NLSP.py");
+        const skillsJson = JSON.stringify(jdSkills);
+        const command = `python3 "${pythonScriptPath}" "${file.path}" '${skillsJson}' "${companyName}"`;
+        
         // console.log(`Executing: ${command}`);
+        // console.log(`JD Skills: ${skillsJson}, Company: ${companyName}`);
+
         const { stdout, stderr } = await execAsync(command, {
           cwd: process.cwd(),
         });
@@ -48,11 +74,9 @@ const uploadResume = asyncHandler(async (req, res) => {
             `Failed to parse Python output for ${file.originalname}:`,
             parseError
           );
-        //   console.log(`Raw Python output:`, stdout);
           extractedData = { raw_output: stdout.trim() };
         }
 
-        // console.log(`Extracted data for ${file.originalname}:`, extractedData);
       } catch (pythonError) {
         console.error(
           `Error processing ${file.originalname} with Python:`,
@@ -75,7 +99,6 @@ const uploadResume = asyncHandler(async (req, res) => {
         });
         uploadedUrls.push(uploadResult.url);
 
-        //SET THE DOCUMENT IN DB OF THAT USER
         try {
           // Create applicant record in database
           const applicantData = {
@@ -88,12 +111,14 @@ const uploadResume = asyncHandler(async (req, res) => {
             github: extractedData.GitHub || null,
             skills: extractedData.Skills || [],
             uploadedResume: uploadResult.url,
-            jobApplied: req.body.jobId || null, // Get jobId from URL parameters
+            jobApplied: jobId || null,
+            workedAtSameCompany:extractedData.Company_Match,
+            qualification:extractedData.Education,
+            skillMatch:extractedData.Match_skill
           };
 
           if (applicantData.email || applicantData.fullName) {
             const newApplicant = await Applicant.create(applicantData);
-            // console.log(`Applicant saved to database:`, newApplicant._id);
 
             // Add the database ID to the response
             uploadResults[uploadResults.length - 1].applicantId =
@@ -109,7 +134,7 @@ const uploadResume = asyncHandler(async (req, res) => {
       } else {
         throw new ApiError(500, `Failed to upload file: ${file.originalname}`);
       }
-      //END OF FOR LOOP, STUFF TO LIE ABOVE
+
     }
 
     return res.status(200).json(

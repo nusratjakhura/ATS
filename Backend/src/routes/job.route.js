@@ -1,13 +1,17 @@
 import { Router } from "express";
-import { addJob, getJob } from "../controllers/job.controller.js";
+import { addJob, getHrJobs, getJob, getApplicants } from "../controllers/job.controller.js";
 import { verifyToken } from "../middlewares/auth.middleware.js";
 
 const router = Router();
 
 router.route('/addJob').post(verifyToken, addJob)
 
-//can protect this route, and ensure that HRs can see only their listings
 router.route('/getJob').get(getJob)
+
+//job details by Hr's id.
+router.route('/getHrJobs').get(verifyToken, getHrJobs)
+
+router.route('/:id/applicants').get(verifyToken, getApplicants)
 
 export default router;
 
