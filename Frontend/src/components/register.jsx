@@ -1,12 +1,13 @@
 import { useState } from "react";
-import Navigation from '../navBar/navigation';
+import Navigation from './navigation';
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
+import axios from "../api/axiosConfig";
 
 export default function RegisterForm() {
   const [formData, setFormData] = useState({
-    username: '',
+    name: '',
     email: '',
+    companyName:'',
     password: '',
   });
 
@@ -22,37 +23,24 @@ export default function RegisterForm() {
   };
 
   const handleSubmit = async(e) => {
-    // e.preventDefault(); 
-    // const form = e.target;
-    // if (!form.checkValidity()) {
-    //   e.stopPropagation();
-    // } 
-    // else {
-    //   console.log("Submitted Data:", JSON.stringify(formData));
-    //   localStorage.setItem("user", JSON.stringify(formData));
-    //   navigate("/login");
-    // }
-    // setValidated(true);
-
     e.preventDefault(); 
     const form = e.target;
 
     if (!form.checkValidity()) {
       e.stopPropagation();
-    } else {
+    } 
+    else {
       try {
-        //  Call your backend API
         const response = await axios.post('/api/hr/register', formData);
-
         console.log("Registration Success:", response.data);
         alert("Registered successfully!");
         navigate("/login/hr");
-      } catch (error) {
+      } 
+      catch (error) {
         console.error("Registration error:", error);
         alert(error.response?.data?.message || "Registration failed");
       }
     }
-
     setValidated(true);
   };
 
@@ -69,8 +57,8 @@ export default function RegisterForm() {
             type="text" 
             className="form-control" 
             id="username" 
-            name="username" 
-            value={formData.username}
+            name="name" 
+            value={formData.name}
             onChange={handleChange}
             required 
           />
@@ -93,6 +81,19 @@ export default function RegisterForm() {
           <div className="invalid-feedback">
                 Please choose a valid email.
             </div>
+        </div>
+
+        <div className="mb-3">
+          <label htmlFor="company" className="form-label">Company Name</label>
+          <input 
+            type="text" 
+            className="form-control" 
+            id="company" 
+            name="companyName" 
+            value={formData.companyName}
+            onChange={handleChange}
+            required 
+          />
         </div>
 
         <div className="mb-3">

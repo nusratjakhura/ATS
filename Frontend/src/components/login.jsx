@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from "react-router-dom";
-import Navigation from '../navBar/navigation';
-import axios from 'axios';
+import Navigation from './navigation';
+import axios from '../api/axiosConfig.js';
 
 export default function LoginForm() {
   const navigate = useNavigate();
@@ -30,7 +30,7 @@ export default function LoginForm() {
     } else {
       try {
         // API call to backend
-        const response = await axios.post('/api/hr/login', formData);
+        const response = await axios.post('/api/candidate/login', formData);
 
         if (response.data.token) {
           localStorage.setItem('token', response.data.token);
@@ -38,6 +38,7 @@ export default function LoginForm() {
 
         alert('Login successful');
         navigate('/dashboard'); // Redirect to dashboard after login
+
       } catch (error) {
         console.error('Login error:', error);
         alert(error.response?.data?.message || 'Invalid credentials');

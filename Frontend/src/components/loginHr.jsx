@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { Link } from "react-router-dom";
-import Navigation from '../navBar/navigation';
+import Navigation from './navigation';
 import { useNavigate } from 'react-router-dom';
+import axios from '../api/axiosConfig.js';
+
 
 export default function LoginHR() {
   const navigate = useNavigate();
@@ -9,7 +11,7 @@ export default function LoginHR() {
   const [formData, setFormData] = useState({
     email: '',
     password: '',
-    id:'',
+    companyName:'',
   });
 
   const [validated, setValidated] = useState(false);
@@ -22,20 +24,25 @@ export default function LoginHR() {
     }));
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    console.log('Login Data:', formData);
-    const form=e.target;
-    if(!form.checkValidity()){
+  const handleSubmit = async(e) => {
+      e.preventDefault();
+      const form = e.target;
+
+      if (!form.checkValidity()) {
         e.stopPropagation();
-    }
-    else{
-        const loggedUser=JSON.parse(localStorage.getItem("user"));
-        console.log(loggedUser);
-        alert("login succesfully")
-        navigate('/dashboard')
-    }
-    setValidated(true);
+      } 
+      else {
+        try {
+          await axios.post('/api/hr/login', formData);
+          alert("Login successful");
+          navigate("/dashboard"); 
+        } 
+        catch (error) {
+          alert(error.response?.data?.message || "Login failed");
+        }
+      }
+
+      setValidated(true);
     
   };
 
@@ -70,12 +77,12 @@ export default function LoginHR() {
         </div>
 
         <div className="mb-3">
-          <label htmlFor="id" className="form-label">Employee ID</label>
+          <label htmlFor="company" className="form-label">Company Name</label>
           <input 
             className="form-control"
-            id="id"
-            name="id"
-            value={formData.id}
+            id="company"
+            name="companyName"
+            value={formData.companyName}
             onChange={handleChange}
             required 
           />
@@ -96,7 +103,7 @@ export default function LoginHR() {
 
         <button type="submit" className="btn btn-primary w-100 mb-3">Login</button>
         <p className="text-center">
-          Don’t have an account? <Link to="/register">Register here</Link></p>
+          Don't have an account? <Link to="/register">Register here</Link></p>
         <hr />
 
         <button type="button" className="btn btn-outline-danger w-100 mb-2" onClick={handleGoogleLogin}>
