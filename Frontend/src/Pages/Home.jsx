@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import Navigation from '../navBar/navigation';
-import Footer from "../navBar/footer";
+import Navigation from '../components/navigation';
+import Footer from "../components/footer";
 
 export default function HomePage() {
   
@@ -14,7 +14,7 @@ export default function HomePage() {
       <main className="flex-grow-1">
         <div className="container mt-5">
           <h1 className="text-center">Welcome to the Home Page</h1>
-          <p className="text-center"></p>
+          
         </div>
       </main>
 
