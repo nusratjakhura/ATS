@@ -154,4 +154,64 @@ const uploadResume = asyncHandler(async (req, res) => {
   }
 });
 
-export { uploadResume };
+const getApplicantData = asyncHandler(async(req, res)=>{
+
+  const {id} = req.params;
+  
+  if(!id){
+    throw new ApiError(400, "Must Specify Applicant ID")
+  }
+  try {
+    const appl = await Applicant.findOne({_id:id})
+    
+    if(!appl){
+      throw new ApiError(404, "No Such Applicant Exists")
+    }
+
+    return res.status(200)
+    .json(new ApiResponse(200, appl, "Fetched Applicant Successfully"))
+
+  } catch (error) {
+    console.log("Can't get the applicant", error)
+    throw new ApiError(500, "Can't get the applicant from database")
+  }
+});
+
+const updateStatus = asyncHandler(async(req, res)=>{
+  const {id} = req.params;
+  const {status} = req.body;
+
+  if(!id || !status){
+    throw new ApiError(400, "Specify Applicant's id and status")
+  }
+
+  try {
+    // Find and update the applicant
+    const updatedApplicant = await Applicant.findByIdAndUpdate(
+      id,
+      { status: status },
+      { 
+        new: true, // Return the updated document
+        runValidators: true // Run mongoose validations
+      }
+    ).populate('jobApplied', 'title location');
+
+    if(!updatedApplicant){
+      throw new ApiError(404, "Applicant not found");
+    }
+
+    return res.status(200).json(
+      new ApiResponse(200, {
+        applicant: updatedApplicant,
+        previousStatus: status,
+        updatedAt: new Date()
+      }, "Applicant status updated successfully")
+    );
+
+  } catch (error) {
+    console.log("Can't update the applicant", error)
+    throw new ApiError(500, "Can't update the applicant in database")
+  }
+})
+
+export { uploadResume, getApplicantData, updateStatus };
