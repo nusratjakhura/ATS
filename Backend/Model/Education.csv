@@ -1,0 +1,19 @@
+education,abbreviation,level
+Secondary School Certificate,SSC,1
+Higher Secondary School,HSC,2
+Diploma in Engineering,Diploma,3
+Bachelor of Arts,B.A,4
+Bachelor of Science,B.Sc,4
+Bachelor of Commerce,B.Com,4
+Bachelor of Technology,B.Tech,4
+Bachelor of Engineering,B.E,4
+Bachelor of Business Administration,BBA,4
+Bachelor of Computer Applications,BCA,4
+Master of Arts,M.A,5
+Master of Science,M.Sc,5
+Master of Commerce,M.Com,5
+Master of Technology,M.Tech,5
+Master of Engineering,M.E,5
+Master of Business Administration,MBA,5
+Master of Computer Applications,MCA,5
+Doctor of Philosophy,Ph.D,6
