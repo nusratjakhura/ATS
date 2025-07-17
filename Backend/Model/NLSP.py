@@ -6,7 +6,7 @@ import json
 import sys
 
 # Load the spaCy NLP model
-nlp = spacy.load("en_core_web_sm")
+nlp = spacy.load("en_core_web_lg")
 
 # Add EntityRuler for custom skill/entity detection
 ruler = nlp.add_pipe("entity_ruler", before="ner")
@@ -32,7 +32,6 @@ ruler.add_patterns(education_patterns)
 
 # Resume parser function
 def parse_resume(text,Jd_skill,Hr_company_name):
-    print("jd skill",Jd_skill)
     text = re.sub(r"\s+", " ", text) 
     doc = nlp(text)
     parsed_data = {}
@@ -84,25 +83,24 @@ def parse_resume(text,Jd_skill,Hr_company_name):
     
     doc_name = nlp(text_cleaned)
     for ent in doc_name.ents:
-        # if ent.label_ == "PERSON":
+        if ent.label_ == "PERSON":
             name_candidate = ent.text.strip()
 
             # Remove special characters and digits, keep only letters and spaces
             cleaned_name = re.sub(r'[^A-Za-z ]+', '', name_candidate).strip()
             cleaned_name = re.sub(r'\s+', ' ', cleaned_name)
 
-            # if any(word.lower() in keywords for word in cleaned_name.lower().split()):
-            #     continue
-
-            if 1 <= len(cleaned_name.split()) <= 3:
+            if 1 <= len(cleaned_name.split()) < 3:
                 parsed_data["Name"] = cleaned_name
                 break
+            else:
+                break #check only for first person
     else:
         parsed_data["Name"] = None
 
     return parsed_data
 
-def parse_resume_pdf(pdf_path, Jd_skill=['CSS'], Hr_company_name='Kanaka'):
+def parse_resume_pdf(pdf_path, Jd_skill, Hr_company_name):
     """
     Takes a PDF file path, extracts text, parses the resume, and returns the result as a dictionary.
     """
