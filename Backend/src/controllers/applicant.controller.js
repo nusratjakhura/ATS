@@ -3,9 +3,13 @@ import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { uploadFile } from "../utils/fileUpload.js";
 import { Applicant } from "../models/applicant.model.js";
+import { JobDescription } from "../models/jobDescription.model.js";
 import { exec } from "child_process";
 import { promisify } from "util";
 import path from "path";
+import fs from "fs";
+import csv from "csv-parser";
+import XLSX from "xlsx";
 
 const execAsync = promisify(exec);
 
@@ -20,19 +24,44 @@ const uploadResume = asyncHandler(async (req, res) => {
     throw new ApiError(400, "No files were uploaded");
   }
 
+  // Get jobId from request body
+  const { jobId } = req.body;
+  
+  // Get job details and HR company name
+  let jdSkills = [];
+  let companyName = "Unknown";
+  
+  try {
+    if (jobId) {
+      const jobDetails = await JobDescription.findById(jobId).populate('createdBy');
+      if (jobDetails) {
+        jdSkills = jobDetails.requiredSkills || [];
+        
+        // Get company name from HR who created the job
+        if (jobDetails.createdBy && jobDetails.createdBy.companyName) {
+          companyName = jobDetails.createdBy.companyName;
+        }
+      }
+    }
+  } catch (error) {
+    console.log("Error fetching job details:", error);
+  }
+
   try {
     const uploadResults = [];
     const uploadedUrls = [];
 
     // Iterate over each file & either call python function here
     for (const file of cvs) {
-      // Call Python script to extract data from the resume
       let extractedData = {};
       try {
-        const pythonScriptPath = path.join(process.cwd(), "NLSP.py");
-        const command = `python3 "${pythonScriptPath}" "${file.path}"`;
-
+        const pythonScriptPath = path.join(process.cwd(), "Model", "NLSP.py");
+        const skillsJson = JSON.stringify(jdSkills);
+        const command = `python3 "${pythonScriptPath}" "${file.path}" '${skillsJson}' "${companyName}"`;
+        
         // console.log(`Executing: ${command}`);
+        // console.log(`JD Skills: ${skillsJson}, Company: ${companyName}`);
+
         const { stdout, stderr } = await execAsync(command, {
           cwd: process.cwd(),
         });
@@ -48,11 +77,9 @@ const uploadResume = asyncHandler(async (req, res) => {
             `Failed to parse Python output for ${file.originalname}:`,
             parseError
           );
-        //   console.log(`Raw Python output:`, stdout);
           extractedData = { raw_output: stdout.trim() };
         }
 
-        // console.log(`Extracted data for ${file.originalname}:`, extractedData);
       } catch (pythonError) {
         console.error(
           `Error processing ${file.originalname} with Python:`,
@@ -75,7 +102,6 @@ const uploadResume = asyncHandler(async (req, res) => {
         });
         uploadedUrls.push(uploadResult.url);
 
-        //SET THE DOCUMENT IN DB OF THAT USER
         try {
           // Create applicant record in database
           const applicantData = {
@@ -88,12 +114,14 @@ const uploadResume = asyncHandler(async (req, res) => {
             github: extractedData.GitHub || null,
             skills: extractedData.Skills || [],
             uploadedResume: uploadResult.url,
-            jobApplied: req.body.jobId || null, // Get jobId from URL parameters
+            jobApplied: jobId || null,
+            workedAtSameCompany:extractedData.Company_Match,
+            qualification:extractedData.Education,
+            skillMatch:extractedData.Match_skill
           };
 
           if (applicantData.email || applicantData.fullName) {
             const newApplicant = await Applicant.create(applicantData);
-            // console.log(`Applicant saved to database:`, newApplicant._id);
 
             // Add the database ID to the response
             uploadResults[uploadResults.length - 1].applicantId =
@@ -109,7 +137,7 @@ const uploadResume = asyncHandler(async (req, res) => {
       } else {
         throw new ApiError(500, `Failed to upload file: ${file.originalname}`);
       }
-      //END OF FOR LOOP, STUFF TO LIE ABOVE
+
     }
 
     return res.status(200).json(
@@ -129,4 +157,233 @@ const uploadResume = asyncHandler(async (req, res) => {
   }
 });
 
-export { uploadResume };
+const getApplicantData = asyncHandler(async(req, res)=>{
+
+  const {id} = req.params;
+  
+  if(!id){
+    throw new ApiError(400, "Must Specify Applicant ID")
+  }
+  try {
+    const appl = await Applicant.findOne({_id:id})
+    
+    if(!appl){
+      throw new ApiError(404, "No Such Applicant Exists")
+    }
+
+    return res.status(200)
+    .json(new ApiResponse(200, appl, "Fetched Applicant Successfully"))
+
+  } catch (error) {
+    console.log("Can't get the applicant", error)
+    throw new ApiError(500, "Can't get the applicant from database")
+  }
+});
+
+const updateStatus = asyncHandler(async(req, res)=>{
+  const {id} = req.params;
+  const {status} = req.body;
+
+  if(!id || !status){
+    throw new ApiError(400, "Specify Applicant's id and status")
+  }
+
+  try {
+    // Find and update the applicant
+    const updatedApplicant = await Applicant.findByIdAndUpdate(
+      id,
+      { status: status },
+      { 
+        new: true, // Return the updated document
+        runValidators: true // Run mongoose validations
+      }
+    ).populate('jobApplied', 'title location');
+
+    if(!updatedApplicant){
+      throw new ApiError(404, "Applicant not found");
+    }
+
+    return res.status(200).json(
+      new ApiResponse(200, {
+        applicant: updatedApplicant,
+        previousStatus: status,
+        updatedAt: new Date()
+      }, "Applicant status updated successfully")
+    );
+
+  } catch (error) {
+    console.log("Can't update the applicant", error)
+    throw new ApiError(500, "Can't update the applicant in database")
+  }
+})
+
+const addTestScore = asyncHandler(async(req,res)=>{
+  const { id: jobId } = req.params; 
+  const { _id: hrId } = req.user; 
+
+  if(!jobId || !hrId){
+    throw new ApiError(400, "Job ID and HR authentication required");
+  }
+  
+  // Check if file was uploaded
+  if(!req.files || Object.keys(req.files).length === 0){
+    throw new ApiError(400, "CSV or Excel file is required");
+  }
+  
+  try {
+    // Verify that this job belongs to the authenticated HR
+    const job = await JobDescription.findById(jobId);
+    if(!job){
+      throw new ApiError(404, "Job not found");
+    }
+    
+    if(job.createdBy.toString() !== hrId.toString()){
+      throw new ApiError(403, "You can only update scores for your own job postings");
+    }
+    
+    // Get the file from req.files - it should be under the 'TestScores' field
+    const file = req.files.TestScores ? req.files.TestScores[0] : Object.values(req.files)[0];
+    
+    if(!file){
+      throw new ApiError(400, "No file uploaded");
+    }
+    
+    const filePath = file.path;
+    
+    const fileExtension = path.extname(file.originalname).toLowerCase();
+    let scoreData = [];
+    
+    if(fileExtension === '.csv'){
+      // Parse CSV file
+      await new Promise((resolve, reject) => {
+        fs.createReadStream(filePath)
+          .pipe(csv())
+          .on('data', (row) => {
+            // Normalize column names (case-insensitive)
+            const normalizedRow = {};
+            Object.keys(row).forEach(key => {
+              const normalizedKey = key.toLowerCase().trim();
+              if(normalizedKey.includes('email')){
+                normalizedRow.email = row[key].trim();
+              } else if(normalizedKey.includes('score')){
+                normalizedRow.score = parseFloat(row[key]);
+              }
+            });
+            
+            if(normalizedRow.email && !isNaN(normalizedRow.score)){
+              scoreData.push(normalizedRow);
+            }
+          })
+          .on('end', resolve)
+          .on('error', reject);
+      });
+      
+    } else if(fileExtension === '.xlsx' || fileExtension === '.xls'){
+      // Parse Excel file
+      const workbook = XLSX.readFile(filePath);
+      const sheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[sheetName];
+      const jsonData = XLSX.utils.sheet_to_json(worksheet);
+      
+      jsonData.forEach(row => {
+        const normalizedRow = {};
+        Object.keys(row).forEach(key => {
+          const normalizedKey = key.toLowerCase().trim();
+          if(normalizedKey.includes('email')){
+            normalizedRow.email = row[key];
+          } else if(normalizedKey.includes('score')){
+            normalizedRow.score = parseFloat(row[key]);
+          }
+        });
+        
+        if(normalizedRow.email && !isNaN(normalizedRow.score)){
+          scoreData.push(normalizedRow);
+        }
+      });
+      
+    } else {
+      throw new ApiError(400, "Unsupported file format. Please upload CSV or Excel file");
+    }
+    
+    if(scoreData.length === 0){
+      throw new ApiError(400, "No valid data found. Please ensure file has 'Email' and 'Score' columns");
+    }
+    
+    // Update applicants with test scores
+    const updateResults = [];
+    const errors = [];
+    
+    for(const record of scoreData){
+      try {
+        const updatedApplicant = await Applicant.findOneAndUpdate(
+          { 
+            email: record.email, 
+            jobApplied: jobId 
+          },
+          { 
+            testScore: record.score,
+            // Optionally update status to Test_Cleared if score is good
+            ...(record.score >= 70 && { aptitute_test: 'Cleared' })
+          },
+          { 
+            new: true,
+            runValidators: true 
+          }
+        );
+        
+        if(updatedApplicant){
+          updateResults.push({
+            email: record.email,
+            score: record.score,
+            applicantId: updatedApplicant._id,
+            updated: true
+          });
+        } else {
+          errors.push({
+            email: record.email,
+            score: record.score,
+            error: "Applicant not found for this job"
+          });
+        }
+        
+      } catch (error) {
+        errors.push({
+          email: record.email,
+          score: record.score,
+          error: error.message
+        });
+      }
+    }
+    
+    // Clean up uploaded file
+    fs.unlinkSync(filePath);
+    
+    return res.status(200).json(
+      new ApiResponse(200, {
+        job: {
+          id: job._id,
+          title: job.title
+        },
+        totalProcessed: scoreData.length,
+        successfulUpdates: updateResults.length,
+        errors: errors.length,
+        results: updateResults,
+        ...(errors.length > 0 && { errors })
+      }, `Test scores updated successfully. ${updateResults.length} applicants updated, ${errors.length} errors`)
+    );
+    
+  } catch (error) {
+    // Clean up uploaded file if it exists
+    if(req.files && Object.keys(req.files).length > 0){
+      const file = req.files.TestScores ? req.files.TestScores[0] : Object.values(req.files)[0];
+      if(file && fs.existsSync(file.path)){
+        fs.unlinkSync(file.path);
+      }
+    }
+    
+    console.log("Error adding test scores:", error);
+    throw new ApiError(500, "Failed to process test scores");
+  }
+})
+
+export { uploadResume, getApplicantData, updateStatus, addTestScore };

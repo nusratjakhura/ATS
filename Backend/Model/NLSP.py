@@ -12,13 +12,13 @@ nlp = spacy.load("en_core_web_lg")
 ruler = nlp.add_pipe("entity_ruler", before="ner")
 
 # Define skill patterns
-skill_df = pd.read_csv('Backend/Model/skills.csv')
+skill_df = pd.read_csv('./Model/skills.csv')
 skills = skill_df['skill'].tolist()
 patterns = [{"label": "SKILL", "pattern": skill} for skill in skills]
 ruler.add_patterns(patterns)
 
 # Define education patterns
-education_df = pd.read_csv('Backend/Model/Education.csv')
+education_df = pd.read_csv('./Model/Education.csv')
 education_names = list(education_df['education'].dropna())
 education_abbrs = list(education_df['abbreviation'].dropna())
 education_levels = dict()
@@ -119,7 +119,18 @@ if __name__ == "__main__":
         sys.exit(1)
     
     pdf_path =sys.argv[1] #  Get file path from command line argument
-    Jd_skill = sys.argv[2].lower().split(",")
+    
+    # Handle both JSON string and comma-separated string formats
+    skills_input = sys.argv[2]
+    try:
+        # Try to parse as JSON first
+        Jd_skill = json.loads(skills_input)
+    except json.JSONDecodeError:
+        # If JSON parsing fails, treat as comma-separated string
+        Jd_skill = [skill.strip() for skill in skills_input.split(',')]
+    
+    # Convert each skill to lowercase
+    Jd_skill = [skill.lower() for skill in Jd_skill]
     Hr_company_name = sys.argv[3]
 
     try:

@@ -10,7 +10,6 @@ const applicantSchema = new mongoose.Schema({
         trim:true,
         required:true
     },
-    //REMEMBER TO TRIM +91 from Object returned
     phone:{
         type:Number,
         trim:true
@@ -32,7 +31,7 @@ const applicantSchema = new mongoose.Schema({
         type:String,
         required:true
     },
-    //FILEDS NOT PARSED YET.
+
     qualification:{
         type:String,
         trim:true
@@ -49,6 +48,14 @@ const applicantSchema = new mongoose.Schema({
     jobApplied:{
         type:mongoose.Schema.Types.ObjectId,
         ref:"JobDescription"
+    },
+    skillMatch:{
+        type:Number,
+        required:true,
+    },
+    testScore:{
+        type:Number,
+        default:null
     },
     //FOR INTERNAL USAGE & COMMS TO DISPLAY
     status: {
