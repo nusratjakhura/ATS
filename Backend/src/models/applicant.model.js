@@ -53,6 +53,10 @@ const applicantSchema = new mongoose.Schema({
         type:Number,
         required:true,
     },
+    testScore:{
+        type:Number,
+        default:null
+    },
     //FOR INTERNAL USAGE & COMMS TO DISPLAY
     status: {
     type: String,

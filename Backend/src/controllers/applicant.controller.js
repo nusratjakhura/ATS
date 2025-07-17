@@ -7,6 +7,9 @@ import { JobDescription } from "../models/jobDescription.model.js";
 import { exec } from "child_process";
 import { promisify } from "util";
 import path from "path";
+import fs from "fs";
+import csv from "csv-parser";
+import XLSX from "xlsx";
 
 const execAsync = promisify(exec);
 
@@ -214,4 +217,173 @@ const updateStatus = asyncHandler(async(req, res)=>{
   }
 })
 
-export { uploadResume, getApplicantData, updateStatus };
+const addTestScore = asyncHandler(async(req,res)=>{
+  const { id: jobId } = req.params; 
+  const { _id: hrId } = req.user; 
+
+  if(!jobId || !hrId){
+    throw new ApiError(400, "Job ID and HR authentication required");
+  }
+  
+  // Check if file was uploaded
+  if(!req.files || Object.keys(req.files).length === 0){
+    throw new ApiError(400, "CSV or Excel file is required");
+  }
+  
+  try {
+    // Verify that this job belongs to the authenticated HR
+    const job = await JobDescription.findById(jobId);
+    if(!job){
+      throw new ApiError(404, "Job not found");
+    }
+    
+    if(job.createdBy.toString() !== hrId.toString()){
+      throw new ApiError(403, "You can only update scores for your own job postings");
+    }
+    
+    // Get the file from req.files - it should be under the 'TestScores' field
+    const file = req.files.TestScores ? req.files.TestScores[0] : Object.values(req.files)[0];
+    
+    if(!file){
+      throw new ApiError(400, "No file uploaded");
+    }
+    
+    const filePath = file.path;
+    
+    const fileExtension = path.extname(file.originalname).toLowerCase();
+    let scoreData = [];
+    
+    if(fileExtension === '.csv'){
+      // Parse CSV file
+      await new Promise((resolve, reject) => {
+        fs.createReadStream(filePath)
+          .pipe(csv())
+          .on('data', (row) => {
+            // Normalize column names (case-insensitive)
+            const normalizedRow = {};
+            Object.keys(row).forEach(key => {
+              const normalizedKey = key.toLowerCase().trim();
+              if(normalizedKey.includes('email')){
+                normalizedRow.email = row[key].trim();
+              } else if(normalizedKey.includes('score')){
+                normalizedRow.score = parseFloat(row[key]);
+              }
+            });
+            
+            if(normalizedRow.email && !isNaN(normalizedRow.score)){
+              scoreData.push(normalizedRow);
+            }
+          })
+          .on('end', resolve)
+          .on('error', reject);
+      });
+      
+    } else if(fileExtension === '.xlsx' || fileExtension === '.xls'){
+      // Parse Excel file
+      const workbook = XLSX.readFile(filePath);
+      const sheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[sheetName];
+      const jsonData = XLSX.utils.sheet_to_json(worksheet);
+      
+      jsonData.forEach(row => {
+        const normalizedRow = {};
+        Object.keys(row).forEach(key => {
+          const normalizedKey = key.toLowerCase().trim();
+          if(normalizedKey.includes('email')){
+            normalizedRow.email = row[key];
+          } else if(normalizedKey.includes('score')){
+            normalizedRow.score = parseFloat(row[key]);
+          }
+        });
+        
+        if(normalizedRow.email && !isNaN(normalizedRow.score)){
+          scoreData.push(normalizedRow);
+        }
+      });
+      
+    } else {
+      throw new ApiError(400, "Unsupported file format. Please upload CSV or Excel file");
+    }
+    
+    if(scoreData.length === 0){
+      throw new ApiError(400, "No valid data found. Please ensure file has 'Email' and 'Score' columns");
+    }
+    
+    // Update applicants with test scores
+    const updateResults = [];
+    const errors = [];
+    
+    for(const record of scoreData){
+      try {
+        const updatedApplicant = await Applicant.findOneAndUpdate(
+          { 
+            email: record.email, 
+            jobApplied: jobId 
+          },
+          { 
+            testScore: record.score,
+            // Optionally update status to Test_Cleared if score is good
+            ...(record.score >= 70 && { aptitute_test: 'Cleared' })
+          },
+          { 
+            new: true,
+            runValidators: true 
+          }
+        );
+        
+        if(updatedApplicant){
+          updateResults.push({
+            email: record.email,
+            score: record.score,
+            applicantId: updatedApplicant._id,
+            updated: true
+          });
+        } else {
+          errors.push({
+            email: record.email,
+            score: record.score,
+            error: "Applicant not found for this job"
+          });
+        }
+        
+      } catch (error) {
+        errors.push({
+          email: record.email,
+          score: record.score,
+          error: error.message
+        });
+      }
+    }
+    
+    // Clean up uploaded file
+    fs.unlinkSync(filePath);
+    
+    return res.status(200).json(
+      new ApiResponse(200, {
+        job: {
+          id: job._id,
+          title: job.title
+        },
+        totalProcessed: scoreData.length,
+        successfulUpdates: updateResults.length,
+        errors: errors.length,
+        results: updateResults,
+        ...(errors.length > 0 && { errors })
+      }, `Test scores updated successfully. ${updateResults.length} applicants updated, ${errors.length} errors`)
+    );
+    
+  } catch (error) {
+    // Clean up uploaded file if it exists
+    if(req.files && Object.keys(req.files).length > 0){
+      const file = req.files.TestScores ? req.files.TestScores[0] : Object.values(req.files)[0];
+      if(file && fs.existsSync(file.path)){
+        fs.unlinkSync(file.path);
+      }
+    }
+    
+    console.log("Error adding test scores:", error);
+    throw new ApiError(500, "Failed to process test scores");
+  }
+})
+
+export { uploadResume, getApplicantData, updateStatus, addTestScore };
