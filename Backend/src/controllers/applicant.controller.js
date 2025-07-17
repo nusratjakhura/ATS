@@ -322,7 +322,7 @@ const addTestScore = asyncHandler(async(req,res)=>{
           },
           { 
             testScore: record.score,
-            // Optionally update status to Test_Cleared if score is good
+            
             ...(record.score >= 70 && { aptitute_test: 'Cleared' })
           },
           { 
