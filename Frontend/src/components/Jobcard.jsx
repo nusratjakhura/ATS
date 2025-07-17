@@ -1,4 +1,3 @@
-import React from "react";
 
 // Functional React component that displays a job card with title, description, and two buttons
 function JobCard() {

@@ -33,7 +33,7 @@ export default function LoginHR() {
       } 
       else {
         try {
-          await axios.post('/api/hr/login', formData);
+          //await axios.post('/api/hr/login', formData);
           alert("Login successful");
           navigate("/dashboard"); 
         } 
@@ -101,7 +101,7 @@ export default function LoginHR() {
           />
         </div>
 
-        <button type="submit" className="btn btn-primary w-100 mb-3">Login</button>
+        <button type="submit" className="btn btn-primary w-100 mb-3" >Login</button>
         <p className="text-center">
           Don't have an account? <Link to="/register">Register here</Link></p>
         <hr />

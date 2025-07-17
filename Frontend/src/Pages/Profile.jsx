@@ -17,12 +17,12 @@ const Profile = () => {
         <h4>User Profile</h4>
         <div className="mt-4">
           <button className="btn btn-light w-100 mb-3">Personal Info</button>
-          <p className="text-light">Settings</p>
+          
         </div>
       </div>
 
       {/* Main Content */}
-      <div className="flex-grow-1 p-5 bg-white">
+      <div className="flex-grow-1 p-5 bg-white ">
         
 
         <form className="mx-auto" style={{ maxWidth: '500px' }} onSubmit={handleSubmit}>
@@ -64,8 +64,15 @@ const Profile = () => {
 
           <div className="text-center">
             <button type="submit" className="btn btn-primary px-5">SAVE</button>
+            <br></br>
+            <br></br>
+            
           </div>
         </form>
+        <div className="text-center">
+          <button type="submit" className="btn btn-primary px-5 text-center"onClick={() => navigate('/career')} >Go To Dashboard</button>
+        </div>
+        
       </div>
     </div>
   );
