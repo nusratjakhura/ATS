@@ -9,17 +9,19 @@ const addJob = asyncHandler(async (req, res) => {
     title,
     description,
     requiredSkills,
-    experienceRequired,
+    experience,
     location,
     qualification,
+    salary,
+    jobType
   } = req.body;
   const {_id} = req.user;
   if (
     !title ||
     !requiredSkills ||
-    !experienceRequired ||
+    !experience ||
     !location ||
-    !qualification
+    !qualification || !salary || !jobType
   ) {
     throw new ApiError(400, "All Fields are Required");
   }
@@ -39,10 +41,12 @@ const addJob = asyncHandler(async (req, res) => {
       title,
       description: description || " ",
       requiredSkills: skillsArray,
-      experienceRequired,
+      experienceRequired: experience,
       location,
       qualification: qualificationArray,
       createdBy:_id,
+      salary,
+      jobType
     });
 
     if (!newJob) {

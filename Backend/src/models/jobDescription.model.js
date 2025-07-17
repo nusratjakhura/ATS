@@ -28,6 +28,14 @@ const jobSchema = new mongoose.Schema({
             type:String
         }
     ],
+    salary:{
+        type:Number,
+        required:true
+    },
+    jobType:{
+        type:String,
+        required:true
+    },
     createdBy: { 
         type: mongoose.Schema.Types.ObjectId, 
         ref: 'HR' 

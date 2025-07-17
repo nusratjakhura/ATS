@@ -10,6 +10,8 @@ import PostedJobs from './Pages/PostedJobs';
 import AddNewJob from './Pages/AddNewJob';
 import Screening from "./Pages/Screening";
 import ResumeUpload from "./Pages/ResumeUpload";
+import Navigation from './components/navigation';
+import Footer from './components/footer';
 
 //import './App.css'
 
@@ -17,20 +19,25 @@ function App() {
   return (
     <>
      <BrowserRouter>
-        <Routes>
-            <Route path='/login/candidate' element={<LoginForm />}></Route>
-            <Route path='/register' element={<RegisterForm/>}></Route>
-            <Route path="/" element={<HomePage/>}></Route>
-            <Route path="/login/hr" element={<LoginHR></LoginHR>}></Route>
-            <Route path="/profile" element={<Profile />} />
-            <Route path="/career" element={<Career />} />
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/postedJobs" element={<PostedJobs />} />
-            <Route path="/addNewJob" element={<AddNewJob />} />
-            <Route path="/screening" element={<Screening />} />
-            <Route path="/resumeUpload" element={<ResumeUpload />} />
-            
-        </Routes>
+        <div className="d-flex flex-column min-vh-100">
+          <Navigation />
+          <main className="flex-grow-1">
+            <Routes>
+                <Route path='/login/candidate' element={<LoginForm />}></Route>
+                <Route path='/register' element={<RegisterForm/>}></Route>
+                <Route path="/" element={<HomePage/>}></Route>
+                <Route path="/login/hr" element={<LoginHR></LoginHR>}></Route>
+                <Route path="/profile" element={<Profile />} />
+                <Route path="/career" element={<Career />} />
+                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/postedJobs" element={<PostedJobs />} />
+                <Route path="/addNewJob" element={<AddNewJob />} />
+                <Route path="/screening" element={<Screening />} />
+                <Route path="/resumeUpload" element={<ResumeUpload />} />
+            </Routes>
+          </main>
+          <Footer />
+        </div>
      </BrowserRouter>
        
     </>
