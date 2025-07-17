@@ -15,8 +15,8 @@ const Career = () => {
           <span>Username</span>
         </div>
         <div>
-          <a className="text-white me-4" href="/">Home</a>
-          <button className="btn btn-light btn-sm">Your Jobs</button>
+          <button className="btn btn-light  me-4" onClick={() => navigate('/')}>Home</button>
+          <button className="btn btn-light ">Your Jobs</button>
         </div>
       </div>
 
@@ -36,7 +36,7 @@ const Career = () => {
               </div>
             ))}
           </div>
-
+        
           <div className="col-md-6">
             {/* Job Details */}
             <div className="text-dark rounded p-4" style={{backgroundColor: '#e8e8e8'}}>

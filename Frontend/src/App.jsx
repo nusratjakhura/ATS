@@ -5,7 +5,12 @@ import HomePage from "./Pages/Home";
 import LoginHR from "./components/loginHr";
 import Profile from './Pages/Profile';
 import Career from './Pages/Career';
-import Dashboard from './Pages/Dashboard';
+import Dashboard from "./Pages/Dashboard";
+import PostedJobs from './Pages/PostedJobs';
+import AddNewJob from './Pages/AddNewJob';
+import Screening from "./Pages/Screening";
+import ResumeUpload from "./Pages/ResumeUpload";
+
 //import './App.css'
 
 function App() {
@@ -20,6 +25,11 @@ function App() {
             <Route path="/profile" element={<Profile />} />
             <Route path="/career" element={<Career />} />
             <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/postedJobs" element={<PostedJobs />} />
+            <Route path="/addNewJob" element={<AddNewJob />} />
+            <Route path="/screening" element={<Screening />} />
+            <Route path="/resumeUpload" element={<ResumeUpload />} />
+            
         </Routes>
      </BrowserRouter>
        
