@@ -14,7 +14,18 @@ const Dashboard = () => {
 
   const fetchPostedJobs = async () => {
     try {
-      const response = await axios.get('/api/job/getHrJobs');
+      const token = localStorage.getItem('token');
+      
+      // if (!token) {
+      //   navigate('/login/hr');
+      //   return;
+      // }
+
+      const response = await axios.get('/api/job/getHrJobs', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
       
       console.log('API Response:', response.data); // Debug log
       
@@ -33,6 +44,10 @@ const Dashboard = () => {
       console.error('Error fetching jobs:', error);
       setError(error.response?.data?.message || 'Failed to fetch jobs');
       setPostedJobs([]); // Ensure it's always an array
+      
+      if (error.response?.status === 401) {
+        navigate('/login/hr');
+      }
     } finally {
       setLoading(false);
     }

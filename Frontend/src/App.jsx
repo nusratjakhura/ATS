@@ -8,6 +8,7 @@ import Career from './Pages/Career';
 import Dashboard from "./Pages/Dashboard";
 import PostedJobs from './Pages/PostedJobs';
 import AddNewJob from './Pages/AddNewJob';
+import JobApplicants from './Pages/JobApplicants';
 import Screening from "./Pages/Screening";
 import ResumeUpload from "./Pages/ResumeUpload";
 import Navigation from './components/navigation';
@@ -32,6 +33,7 @@ function App() {
                 <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/postedJobs" element={<PostedJobs />} />
                 <Route path="/addNewJob" element={<AddNewJob />} />
+                <Route path="/job/:id/applicants" element={<JobApplicants />} />
                 <Route path="/screening" element={<Screening />} />
                 <Route path="/resumeUpload" element={<ResumeUpload />} />
             </Routes>
