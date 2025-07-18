@@ -78,8 +78,8 @@ const Dashboard = () => {
         <h2 className="mb-4">Dashboard Overview</h2>
         <div className="row g-4">
           
-          <div className="col-md-6 col-xl-3">
-            <div className="card text-center shadow-sm">
+          <div className="col-md-6 col-xl-3 ">
+            <div className="card text-center bg-warning shadow-sm">
               <div className="card-body">
                 <h5 className="card-title">Total Jobs</h5>
                 <p className="card-text fs-4">12</p>
@@ -88,7 +88,7 @@ const Dashboard = () => {
           </div>
 
           <div className="col-md-6 col-xl-3 ">
-            <div className="card text-center shadow-sm " >
+            <div className="card text-center text-white bg-danger shadow-sm " >
               <div className="card-body">
                 <h5 className="card-title">Resumes Uploaded</h5>
                 <p className="card-text fs-4">45</p>
@@ -97,7 +97,7 @@ const Dashboard = () => {
           </div>
 
           <div className="col-md-6 col-xl-3">
-            <div className="card text-center shadow-sm">
+            <div className="card text-center text-white bg-success shadow-sm">
               <div className="card-body">
                 <h5 className="card-title">Candidates Screened</h5>
                 <p className="card-text fs-4">30</p>
@@ -106,7 +106,7 @@ const Dashboard = () => {
           </div>
 
           <div className="col-md-6 col-xl-3">
-            <div className="card text-center shadow-sm">
+            <div className="card text-center bg-primary shadow-sm">
               <div className="card-body">
                 <h5 className="card-title">Interviews Scheduled</h5>
                 <p className="card-text fs-4">8</p>
@@ -119,7 +119,7 @@ const Dashboard = () => {
   <h4 className="mb-3">Job Listings</h4>
   <div className="table-responsive"  style={{ maxHeight: '600px', overflowY: 'auto' }}>
     <table className="table table-hover table-bordered align-middle text-center shadow-sm">
-      <thead className="table-light" style={{ position: 'sticky', top: 0, zIndex: 1 }}>
+      <thead className="table-primary" style={{ position: 'sticky', top: 0, zIndex: 1 }}>
         <tr>
           <th>Job Title</th>
           <th>Category</th>
@@ -148,11 +148,6 @@ const Dashboard = () => {
       </div>
 
       
-
-   
-       
-       
-       
     </div>
   );
 }
