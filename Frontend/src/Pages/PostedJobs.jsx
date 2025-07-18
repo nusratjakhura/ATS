@@ -187,19 +187,19 @@ const Dashboard = () => {
                       </span>
                     </div>
                     
-                    <div className="d-grid gap-2">
+                    <div className="d-flex gap-2">
                       <button 
-                        className="btn btn-primary btn-sm"
+                        className="btn btn-primary btn-sm flex-fill"
                         onClick={() => navigate(`/job/${job._id}/applicants`)}
                       >
-                        <i className="bi bi-eye me-2"></i>
+                        <i className="bi bi-eye me-1"></i>
                         View Applied
                       </button>
                       <button 
-                        className="btn btn-outline-primary btn-sm"
+                        className="btn btn-outline-primary btn-sm flex-fill"
                         onClick={() => navigate(`/job/${job._id}/upload-cv`)}
                       >
-                        <i className="bi bi-file-earmark-arrow-up me-2"></i>
+                        <i className="bi bi-file-earmark-arrow-up me-1"></i>
                         Add CV
                       </button>
                     </div>
