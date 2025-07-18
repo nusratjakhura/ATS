@@ -4,14 +4,14 @@ export default function Footer() {
     <footer className="bg-light text-dark py-4 mt-auto">
       <div className="container text-center">
         <div className="row">
-          <div className="col-md-4 mb-3 mb-md-0">
+          <div className="card-hover col-md-4 mb-3 mb-md-0">
             <h5>About Us</h5>
             <p className="small">
               We are dedicated to providing the best web experience. Contact us for more details.
             </p>
           </div>
 
-          <div className="col-md-4 mb-3 mb-md-0">
+          <div className="card-hover col-md-4 mb-3 mb-md-0">
             <h5>Quick Links</h5>
             <ul className="list-unstyled">
               <li><a href="/" className="text-dark text-decoration-none">Home</a></li>
@@ -20,7 +20,7 @@ export default function Footer() {
             </ul>
           </div>
 
-          <div className="col-md-4">
+          <div className="card-hover col-md-4">
             <h5>Follow Us</h5>
             <a href="#" className="text-dark me-3"><i className="bi bi-facebook"></i></a>
             <a href="#" className="text-dark me-3"><i className="bi bi-twitter"></i></a>
