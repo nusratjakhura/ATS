@@ -318,7 +318,8 @@ const addTestScore = asyncHandler(async(req,res)=>{
         const updatedApplicant = await Applicant.findOneAndUpdate(
           { 
             email: record.email, 
-            jobApplied: jobId 
+            jobApplied: jobId,
+            status: 'Test_Sent'
           },
           { 
             testScore: record.score,
@@ -342,7 +343,7 @@ const addTestScore = asyncHandler(async(req,res)=>{
           errors.push({
             email: record.email,
             score: record.score,
-            error: "Applicant not found for this job"
+            error: "Applicant not found for this job or test not sent to this applicant"
           });
         }
         
