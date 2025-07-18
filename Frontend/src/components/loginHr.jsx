@@ -1,9 +1,7 @@
 import { useState } from 'react';
 import { Link } from "react-router-dom";
-import Navigation from './navigation';
 import { useNavigate } from 'react-router-dom';
-import axios from '../api/axiosConfig.js';
-
+import axios from 'axios';
 
 export default function LoginHR() {
   const navigate = useNavigate();
@@ -11,7 +9,6 @@ export default function LoginHR() {
   const [formData, setFormData] = useState({
     email: '',
     password: '',
-    companyName:'',
   });
 
   const [validated, setValidated] = useState(false);
@@ -33,11 +30,19 @@ export default function LoginHR() {
       } 
       else {
         try {
-          //await axios.post('/api/hr/login', formData);
+          const response = await axios.post('/api/hr/login', formData);
+          console.log("Login Success:", response.data);
+          
+          // Store the token if provided
+          if (response.data.data.token) {
+            localStorage.setItem('token', response.data.data.token);
+          }
+          
           alert("Login successful");
-          navigate("/dashboard"); 
+          window.location.href = "/dashboard"; // Full page reload 
         } 
         catch (error) {
+          console.error("Login error:", error);
           alert(error.response?.data?.message || "Login failed");
         }
       }
@@ -58,7 +63,6 @@ export default function LoginHR() {
 
   return (
     <>
-    <Navigation></Navigation>
     <div className="container mt-4" style={{ maxWidth: '450px' }}>
       <h2 className="text-center mb-4">Login</h2>
 
@@ -74,18 +78,9 @@ export default function LoginHR() {
             onChange={handleChange}
             required 
           />
-        </div>
-
-        <div className="mb-3">
-          <label htmlFor="company" className="form-label">Company Name</label>
-          <input 
-            className="form-control"
-            id="company"
-            name="companyName"
-            value={formData.companyName}
-            onChange={handleChange}
-            required 
-          />
+          <div className="invalid-feedback">
+            Please enter a valid email address.
+          </div>
         </div>
         
         <div className="mb-3">
@@ -99,6 +94,9 @@ export default function LoginHR() {
             onChange={handleChange}
             required 
           />
+          <div className="invalid-feedback">
+            Please enter your password.
+          </div>
         </div>
 
         <button type="submit" className="btn btn-primary w-100 mb-3" >Login</button>

@@ -1,7 +1,7 @@
 import { useState } from "react";
-import Navigation from './navigation';
 import { useNavigate } from "react-router-dom";
-import axios from "../api/axiosConfig";
+// import axios from "../api/axiosConfig";
+import axios from "axios";
 
 export default function RegisterForm() {
   const [formData, setFormData] = useState({
@@ -9,6 +9,7 @@ export default function RegisterForm() {
     email: '',
     companyName:'',
     password: '',
+    confirmPassword: '',
   });
 
   const navigate = useNavigate();
@@ -29,9 +30,18 @@ export default function RegisterForm() {
     if (!form.checkValidity()) {
       e.stopPropagation();
     } 
+    else if (formData.password !== formData.confirmPassword) {
+      alert("Passwords do not match!");
+      e.stopPropagation();
+    }
     else {
       try {
-        const response = await axios.post('/api/hr/register', formData);
+        const response = await axios.post('/api/hr/register', {
+          name: formData.name,
+          email: formData.email,
+          companyName: formData.companyName,
+          password: formData.password
+        });
         console.log("Registration Success:", response.data);
         alert("Registered successfully!");
         navigate("/login/hr");
@@ -46,24 +56,23 @@ export default function RegisterForm() {
 
   return (
     <>
-    <Navigation></Navigation>
     <h2 className="mt-5 text-center">Register</h2>
     <div className="container mt-3 border rounded border-dark px-4" style={{ maxWidth: '450px' }}>
       
       <form  onSubmit={handleSubmit} noValidate className={`needs-validation ${validated ? 'was-validated' : ''}`} >
         <div className="mb-3 mt-3">
-          <label htmlFor="username" className="form-label">Username</label>
+          <label htmlFor="name" className="form-label">Full Name</label>
           <input 
             type="text" 
             className="form-control" 
-            id="username" 
+            id="name" 
             name="name" 
             value={formData.name}
             onChange={handleChange}
             required 
           />
             <div className="invalid-feedback">
-                Please choose a valid username.
+                Please enter your full name.
             </div>
         </div>
         
@@ -94,6 +103,9 @@ export default function RegisterForm() {
             onChange={handleChange}
             required 
           />
+          <div className="invalid-feedback">
+                Please enter your company name.
+            </div>
         </div>
 
         <div className="mb-3">
@@ -107,6 +119,25 @@ export default function RegisterForm() {
             onChange={handleChange}
             required 
           />
+          <div className="invalid-feedback">
+                Please enter a password.
+            </div>
+        </div>
+
+        <div className="mb-3">
+          <label htmlFor="confirmPassword" className="form-label">Confirm Password</label>
+          <input 
+            type="password" 
+            className="form-control" 
+            id="confirmPassword" 
+            name="confirmPassword" 
+            value={formData.confirmPassword}
+            onChange={handleChange}
+            required 
+          />
+          <div className="invalid-feedback">
+                Please confirm your password.
+            </div>
         </div>
 
         <button type="submit" className="btn btn-primary w-100 mb-3">Register</button>

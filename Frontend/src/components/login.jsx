@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from "react-router-dom";
-import Navigation from './navigation';
-import axios from '../api/axiosConfig.js';
+// import axios from '../api/axiosConfig.js';
+import axios from 'axios'
 
 export default function LoginForm() {
   const navigate = useNavigate();
@@ -37,7 +37,7 @@ export default function LoginForm() {
         }
 
         alert('Login successful');
-        navigate('/dashboard'); // Redirect to dashboard after login
+        window.location.href = '/dashboard'; // Full page reload
 
       } catch (error) {
         console.error('Login error:', error);
@@ -60,7 +60,6 @@ export default function LoginForm() {
 
   return (
     <>
-      <Navigation />
       <div className="container mt-5" style={{ maxWidth: '450px' }}>
         <h2 className="text-center mb-4">Login</h2>
 
@@ -76,6 +75,9 @@ export default function LoginForm() {
               onChange={handleChange}
               required 
             />
+            <div className="invalid-feedback">
+              Please enter a valid email address.
+            </div>
           </div>
           
           <div className="mb-3">
@@ -89,6 +91,9 @@ export default function LoginForm() {
               onChange={handleChange}
               required 
             />
+            <div className="invalid-feedback">
+              Please enter your password.
+            </div>
           </div>
 
           <button type="submit" className="btn btn-primary w-100 mb-3">Login</button>

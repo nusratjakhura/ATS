@@ -74,11 +74,19 @@ const applicantSchema = new mongoose.Schema({
         enum:['NA','Cleared', 'Not_Cleared', 'Undergoing'],
         default:'NA'
     },
+    interview_1_Comments:{
+        type:String,
+        default: "None"
+    },
     interview_2:{
         type:String,
         enum:['NA','Cleared', 'Not_Cleared', 'Undergoing'],
         default:'NA'
-    }
+    },
+    interview_2_Comments:{
+        type:String,
+        default: "None"
+    },
 },{timestamps:true});
 
 export const Applicant = mongoose.model("Applicant", applicantSchema)

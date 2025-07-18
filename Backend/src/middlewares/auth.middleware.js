@@ -2,7 +2,8 @@ import jwt from 'jsonwebtoken';
 import { ApiError } from '../utils/ApiError.js';
 
 export const verifyToken = (req,res,next)=>{
-    const token = req.cookies?.token;
+    // Check for token in cookies first, then in Authorization header
+    const token = req.cookies?.token || req.headers.authorization?.replace('Bearer ', '');
 
     // console.log(token);
 
