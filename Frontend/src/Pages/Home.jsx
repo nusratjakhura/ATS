@@ -1,5 +1,4 @@
 import CenterImage from '../assets/icon.png';  // your uploaded center image
-import './styles.css';            // replace with your logo image
 
 const HomePage = () => {
   return (
@@ -74,7 +73,7 @@ const HomePage = () => {
 
         </div>
       </div>
-    </div>  // ✅ Wrap everything in a parent div
+    </div>  
   );
 };
 

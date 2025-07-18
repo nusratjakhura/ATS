@@ -99,4 +99,69 @@ const logoutHR = asyncHandler(async(req,res)=>{
     .json(new ApiResponse(200,{},"User Logged Out"))
 });
 
-export {registerHR, loginHR, logoutHR}
+const getProfile = asyncHandler(async(req, res) => {
+    const { _id } = req.user;
+
+    if (!_id) {
+        throw new ApiError(401, "Unauthorized access");
+    }
+
+    try {
+        const user = await HR.findById(_id).select("-password");
+        
+        if (!user) {
+            throw new ApiError(404, "User not found");
+        }
+
+        return res.status(200).json(
+            new ApiResponse(200, { user }, "Profile retrieved successfully")
+        );
+    } catch (error) {
+        console.log("Error fetching profile:", error);
+        throw new ApiError(500, "Failed to fetch profile");
+    }
+});
+
+const changePassword = asyncHandler(async(req, res) => {
+    const { _id } = req.user;
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword || !newPassword) {
+        throw new ApiError(400, "Current password and new password are required");
+    }
+
+    if (newPassword.length < 6) {
+        throw new ApiError(400, "New password must be at least 6 characters long");
+    }
+
+    try {
+        const user = await HR.findById(_id);
+        
+        if (!user) {
+            throw new ApiError(404, "User not found");
+        }
+
+        // Verify current password
+        const isCurrentPasswordValid = await bcrypt.compare(currentPassword, user.password);
+        
+        if (!isCurrentPasswordValid) {
+            throw new ApiError(401, "Current password is incorrect");
+        }
+
+        // Hash new password
+        const saltRounds = 10;
+        const hashedNewPassword = await bcrypt.hash(newPassword, saltRounds);
+
+        // Update password
+        await HR.findByIdAndUpdate(_id, { password: hashedNewPassword });
+
+        return res.status(200).json(
+            new ApiResponse(200, {}, "Password changed successfully")
+        );
+    } catch (error) {
+        console.log("Error changing password:", error);
+        throw new ApiError(500, "Failed to change password");
+    }
+});
+
+export {registerHR, loginHR, logoutHR, getProfile, changePassword}

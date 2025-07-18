@@ -1,5 +1,5 @@
 import { Link, useNavigate } from "react-router-dom";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import LogoImage from '../assets/logo.png';
 
@@ -7,9 +7,23 @@ export default function Navbar() {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const dropdownRef = useRef(null);
 
   useEffect(() => {
     checkAuthStatus();
+    
+    // Close dropdown when clicking outside
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
   }, []);
 
   const checkAuthStatus = async () => {
@@ -30,6 +44,7 @@ export default function Navbar() {
     } catch (error) {
       console.error('Logout API failed:', error);
     }
+    setDropdownOpen(false);
     localStorage.removeItem('token');
     setUser(null);
     window.location.href = '/';
@@ -64,12 +79,58 @@ export default function Navbar() {
         </span>
 
         {!loading && user ? (
-          <>
-            <span className="text-white fw-semibold">{user.name}</span>
-            <button className="btn btn-light fw-semibold" onClick={handleLogout}>
-              Logout
+          <div className="dropdown" ref={dropdownRef}>
+            <button
+              className="btn btn-light dropdown-toggle fw-semibold d-flex align-items-center"
+              type="button"
+              onClick={() => setDropdownOpen(!dropdownOpen)}
+              aria-expanded={dropdownOpen}
+            >
+              {user.name}
             </button>
-          </>
+            <ul className={`dropdown-menu dropdown-menu-end ${dropdownOpen ? 'show' : ''}`}>
+              <li>
+                <span className="dropdown-item-text">
+                  <small className="text-muted">{user.email}</small>
+                </span>
+              </li>
+              <li><hr className="dropdown-divider" /></li>
+              <li>
+                <button
+                  className="dropdown-item"
+                  onClick={() => {
+                    setDropdownOpen(false);
+                    navigate('/profile');
+                  }}
+                >
+                  <i className="bi bi-person me-2"></i>
+                  Profile
+                </button>
+              </li>
+              <li>
+                <button
+                  className="dropdown-item"
+                  onClick={() => {
+                    setDropdownOpen(false);
+                    navigate('/dashboard');
+                  }}
+                >
+                  <i className="bi bi-speedometer2 me-2"></i>
+                  Dashboard
+                </button>
+              </li>
+              <li><hr className="dropdown-divider" /></li>
+              <li>
+                <button
+                  className="dropdown-item text-danger"
+                  onClick={handleLogout}
+                >
+                  <i className="bi bi-box-arrow-right me-2"></i>
+                  Logout
+                </button>
+              </li>
+            </ul>
+          </div>
         ) : (
           <>
             <button

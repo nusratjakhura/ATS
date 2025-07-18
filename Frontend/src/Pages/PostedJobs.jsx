@@ -54,7 +54,7 @@ const Dashboard = () => {
   }; 
 
   return (
-    <div className="d-flex" style={{ height: '100vh' }}>
+    <div className="d-flex" style={{ minHeight: '100vh' }}>
       
       <div className="bg-primary text-white p-3" style={{ width: '260px' }}>
         <div className="text-center mb-4">
@@ -70,7 +70,7 @@ const Dashboard = () => {
       </div>
       
        
-      <div className="flex-grow-1 p-4 bg-light">
+      <div className="flex-grow-1 p-4 bg-light" style={{ paddingBottom: '150px' }}>
         <div className="d-flex justify-content-between align-items-center mb-4">
           <input
             type="text"
@@ -104,10 +104,10 @@ const Dashboard = () => {
           </div>
         )}
         
-        <div className="row">
+        <div className="row g-4">
           {Array.isArray(postedJobs) && postedJobs.map((job) => (
-            <div key={job._id} className="col-md-6 col-lg-4 mb-4">
-              <div className="card shadow-sm border-0" style={{ height: '350px' }}>
+            <div key={job._id} className="col-md-6 col-lg-4">
+              <div className="card shadow-sm border-0 h-100">
                 <div className="card-body d-flex flex-column">
                   <div className="mb-3">
                     <h5 className="card-title text-primary fw-bold">{job.title || 'No Title'}</h5>
