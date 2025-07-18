@@ -41,7 +41,7 @@ export default function Navbar() {
   };
 
   return (
-    <nav className="navbar navbar-expand-lg navbar-dark bg-primary shadow-sm">
+    <nav className="navbar navbar-expand-lg navbar-dark bg-primary shadow-sm" style={{ position: 'sticky', top: 0, zIndex: 2 }}>
       <div className="container">
         <Link className="navbar-brand fw-bold text-white" to="/">
           <i className="bi bi-briefcase-fill me-2"></i>
