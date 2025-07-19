@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link } from "react-router-dom";
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { toast } from 'react-toastify';
 
 export default function LoginHR() {
   const navigate = useNavigate();
@@ -38,12 +39,11 @@ export default function LoginHR() {
             localStorage.setItem('token', response.data.data.token);
           }
           
-          alert("Login successful");
+          toast.success("Login successful!");
           window.location.href = "/dashboard"; // Full page reload 
         } 
         catch (error) {
-          console.error("Login error:", error);
-          alert(error.response?.data?.message || "Login failed");
+          toast.error("Login failed!");
         }
       }
 
@@ -63,11 +63,11 @@ export default function LoginHR() {
 
   return (
     <>
-    <div className="container mt-4" style={{ maxWidth: '450px' }}>
-      <h2 className="text-center mb-4">Login</h2>
+    <div className="container mt-4 mb-5 " style={{ maxWidth: '450px' }}>
+      <h2 className="text-center mb-4 " style={{ color: '#183B5C' }}>Login</h2>
 
-      <form onSubmit={handleSubmit} noValidate className={`border border-dark p-4 rounded shadow-sm ${validated ? 'was-validated' : ''}`}>
-        <div className="mb-3">
+      <form onSubmit={handleSubmit} noValidate className={`border p-4 rounded shadow-lg ${validated ? 'was-validated' : ''}`}>
+        <div className="mb-3 ">
           <label htmlFor="email" className="form-label">Email address</label>
           <input 
             type="email"

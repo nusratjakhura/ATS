@@ -1,4 +1,7 @@
 import { BrowserRouter,Routes,Route } from "react-router-dom"
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+
 import LoginForm from './components/login'
 import RegisterForm from './components/register';
 import HomePage from "./Pages/Home";
@@ -22,6 +25,7 @@ function App() {
      <BrowserRouter>
         <div className="d-flex flex-column min-vh-100">
           <Navigation />
+          <ToastContainer />
           <main className="flex-grow-1">
             <Routes>
                 <Route path='/login/candidate' element={<LoginForm />}></Route>

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from "react-router-dom";
 // import axios from '../api/axiosConfig.js';
 import axios from 'axios'
+import { toast } from 'react-toastify';
 
 export default function LoginForm() {
   const navigate = useNavigate();
@@ -36,12 +37,12 @@ export default function LoginForm() {
           localStorage.setItem('token', response.data.token);
         }
 
-        alert('Login successful');
+        toast.success("Registration successful!");
         window.location.href = '/dashboard'; // Full page reload
 
       } catch (error) {
         console.error('Login error:', error);
-        alert(error.response?.data?.message || 'Invalid credentials');
+        toast.error("Registration failed!");
       }
     }
 
@@ -60,10 +61,10 @@ export default function LoginForm() {
 
   return (
     <>
-      <div className="container mt-5" style={{ maxWidth: '450px' }}>
-        <h2 className="text-center mb-4">Login</h2>
+      <div className="container mt-5 mb-5" style={{ maxWidth: '450px' }}>
+        <h2 className="text-center mb-4 " style={{ color: '#183B5C' }}>Login</h2>
 
-        <form onSubmit={handleSubmit} noValidate className={`border border-dark p-4 rounded shadow-sm ${validated ? 'was-validated' : ''}`}>
+        <form onSubmit={handleSubmit} noValidate className={`border  p-4 rounded shadow-lg ${validated ? 'was-validated' : ''}`}>
           <div className="mb-3">
             <label htmlFor="email" className="form-label">Email address</label>
             <input 
