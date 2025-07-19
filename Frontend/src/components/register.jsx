@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { toast } from 'react-toastify';
+
 // import axios from "../api/axiosConfig";
 import axios from "axios";
 
@@ -43,12 +45,14 @@ export default function RegisterForm() {
           password: formData.password
         });
         console.log("Registration Success:", response.data);
-        alert("Registered successfully!");
+        toast.success("Registration successful!");
+        
         navigate("/login/hr");
       } 
       catch (error) {
         console.error("Registration error:", error);
-        alert(error.response?.data?.message || "Registration failed");
+        //alert(error.response?.data?.message || "Registration failed");
+        toast.error("Registration failed!");
       }
     }
     setValidated(true);
@@ -56,8 +60,8 @@ export default function RegisterForm() {
 
   return (
     <>
-    <h2 className="mt-5 text-center">Register</h2>
-    <div className="container mt-3 border rounded border-dark px-4" style={{ maxWidth: '450px' }}>
+    <h2 className="mt-3 text-center" style={{ color: '#183B5C' }}>Register</h2>
+    <div className="container mt-3 mb-5 card shadow-lg rounded  px-4" style={{ maxWidth: '450px' }}>
       
       <form  onSubmit={handleSubmit} noValidate className={`needs-validation ${validated ? 'was-validated' : ''}`} >
         <div className="mb-3 mt-3">
