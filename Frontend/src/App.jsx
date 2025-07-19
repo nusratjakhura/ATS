@@ -14,6 +14,8 @@ import AddNewJob from './Pages/AddNewJob';
 import JobApplicants from './Pages/JobApplicants';
 import Screening from "./Pages/Screening";
 import ResumeUpload from "./Pages/ResumeUpload";
+import ResumeUploadForJob from "./Pages/ResumeUploadForJob";
+import UploadTestResults from "./Pages/UploadTestResults";
 import Navigation from './components/navigation';
 import Footer from './components/footer';
 
@@ -38,6 +40,8 @@ function App() {
                 <Route path="/postedJobs" element={<PostedJobs />} />
                 <Route path="/addNewJob" element={<AddNewJob />} />
                 <Route path="/job/:id/applicants" element={<JobApplicants />} />
+                <Route path="/job/:id/upload-cv" element={<ResumeUploadForJob />} />
+                <Route path="/job/:id/uploadTestResults" element={<UploadTestResults />} />
                 <Route path="/screening" element={<Screening />} />
                 <Route path="/resumeUpload" element={<ResumeUpload />} />
             </Routes>

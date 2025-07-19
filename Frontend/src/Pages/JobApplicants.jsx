@@ -9,6 +9,9 @@ const JobApplicants = () => {
   const [jobDetails, setJobDetails] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [selectedApplicants, setSelectedApplicants] = useState([]);
+  const [testLink, setTestLink] = useState('');
+  const [sendingTestLink, setSendingTestLink] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -20,11 +23,6 @@ const JobApplicants = () => {
     try {
       setLoading(true);
       const token = localStorage.getItem('token');
-      
-    //   if (!token) {
-    //     navigate('/login/hr');
-    //     return;
-    //   }
 
       const response = await axios.get(`/api/job/${id}/applicants`, {
         headers: {
@@ -35,11 +33,15 @@ const JobApplicants = () => {
       console.log('Applicants API Response:', response.data);
       
       if (response.data?.data?.applicants) {
-        setApplicants(response.data.data.applicants);
+        // Sort applicants by skillMatch in descending order
+        const sortedApplicants = response.data.data.applicants.sort((a, b) => 
+          (b.skillMatch || 0) - (a.skillMatch || 0)
+        );
+        setApplicants(sortedApplicants);
         
         // Extract job details from the first applicant if available
-        if (response.data.data.applicants.length > 0 && response.data.data.applicants[0].jobApplied) {
-          setJobDetails(response.data.data.applicants[0].jobApplied);
+        if (sortedApplicants.length > 0 && sortedApplicants[0].jobApplied) {
+          setJobDetails(sortedApplicants[0].jobApplied);
         }
       } else {
         setApplicants([]);
@@ -92,6 +94,86 @@ const JobApplicants = () => {
     if (score >= 80) return 'bg-success';
     if (score >= 60) return 'bg-warning';
     return 'bg-danger';
+  };
+
+  const handleSelectApplicant = (applicantId) => {
+    setSelectedApplicants(prev => {
+      if (prev.includes(applicantId)) {
+        return prev.filter(id => id !== applicantId);
+      } else {
+        return [...prev, applicantId];
+      }
+    });
+  };
+
+  const handleSelectAll = () => {
+    if (selectedApplicants.length === applicants.length) {
+      setSelectedApplicants([]);
+    } else {
+      setSelectedApplicants(applicants.map(applicant => applicant._id));
+    }
+  };
+
+  const sendTestLink = async () => {
+    if (selectedApplicants.length === 0) {
+      alert('Please select at least one applicant');
+      return;
+    }
+
+    if (!testLink.trim()) {
+      alert('Please enter a test link');
+      return;
+    }
+
+    setSendingTestLink(true);
+    const token = localStorage.getItem('token');
+    const updatedApplicants = [];
+    const errors = [];
+
+    try {
+      for (const applicantId of selectedApplicants) {
+        try {
+          await axios.put(`/api/applicant/${applicantId}/updateStatus`, 
+            { status: 'Test_Sent' },
+            {
+              headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+              }
+            }
+          );
+          updatedApplicants.push(applicantId);
+        } catch (error) {
+          console.error(`Error updating applicant ${applicantId}:`, error);
+          errors.push(applicantId);
+        }
+      }
+
+      // Update local state
+      setApplicants(prev => 
+        prev.map(applicant => 
+          updatedApplicants.includes(applicant._id) 
+            ? { ...applicant, status: 'Test_Sent' }
+            : applicant
+        )
+      );
+
+      // Clear selections and test link
+      setSelectedApplicants([]);
+      setTestLink('');
+
+      if (errors.length === 0) {
+        alert(`Test link sent successfully to ${updatedApplicants.length} applicant(s)`);
+      } else {
+        alert(`Test link sent to ${updatedApplicants.length} applicant(s). ${errors.length} failed.`);
+      }
+
+    } catch (error) {
+      console.error('Error sending test links:', error);
+      alert('Failed to send test links. Please try again.');
+    } finally {
+      setSendingTestLink(false);
+    }
   };
 
   return (
@@ -182,12 +264,90 @@ const JobApplicants = () => {
 
         {/* Applicants List */}
         {!loading && !error && applicants.length > 0 && (
-          <div className="row">
+          <>
+            {/* Selection and Test Link Controls */}
+            <div className="card border-0 shadow-sm mb-4">
+              <div className="card-body">
+                <div className="row align-items-center">
+                  <div className="col-md-3">
+                    <div className="form-check">
+                      <input 
+                        className="form-check-input" 
+                        type="checkbox" 
+                        id="selectAll"
+                        checked={selectedApplicants.length === applicants.length && applicants.length > 0}
+                        onChange={handleSelectAll}
+                      />
+                      <label className="form-check-label fw-bold" htmlFor="selectAll">
+                        Select All ({selectedApplicants.length} selected)
+                      </label>
+                    </div>
+                  </div>
+                  <div className="col-md-5">
+                    <div className="input-group">
+                      <span className="input-group-text">
+                        <i className="bi bi-link-45deg"></i>
+                      </span>
+                      <input 
+                        type="url" 
+                        className="form-control" 
+                        placeholder="Enter test link URL"
+                        value={testLink}
+                        onChange={(e) => setTestLink(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                  <div className="col-md-4 text-end">
+                    <button 
+                      className="btn btn-success"
+                      onClick={sendTestLink}
+                      disabled={selectedApplicants.length === 0 || !testLink.trim() || sendingTestLink}
+                    >
+                      {sendingTestLink ? (
+                        <>
+                          <span className="spinner-border spinner-border-sm me-2" role="status">
+                            <span className="visually-hidden">Loading...</span>
+                          </span>
+                          Sending...
+                        </>
+                      ) : (
+                        <>
+                          <i className="bi bi-send me-2"></i>
+                          Send Test Link ({selectedApplicants.length})
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Applicants Cards */}
+            <div className="row">
+              <div className="col-12 mb-3">
+                <small className="text-muted">
+                  <i className="bi bi-sort-down me-1"></i>
+                  Sorted by skill match percentage (highest first)
+                </small>
+              </div>
             {applicants.map((applicant, index) => (
               <div key={applicant._id} className="col-12 mb-4">
                 <div className="card border-0 shadow-sm">
                   <div className="card-body">
                     <div className="row align-items-center">
+                      {/* Checkbox for selection */}
+                      <div className="col-md-1">
+                        <div className="form-check">
+                          <input 
+                            className="form-check-input" 
+                            type="checkbox" 
+                            id={`applicant-${applicant._id}`}
+                            checked={selectedApplicants.includes(applicant._id)}
+                            onChange={() => handleSelectApplicant(applicant._id)}
+                          />
+                        </div>
+                      </div>
+                      
                       {/* Applicant Info */}
                       <div className="col-md-3">
                         <div className="d-flex align-items-center">
@@ -213,7 +373,7 @@ const JobApplicants = () => {
                       </div>
 
                       {/* Skills & Experience */}
-                      <div className="col-md-4">
+                      <div className="col-md-3">
                         <div className="mb-2">
                           <small className="text-muted">
                             <i className="bi bi-briefcase me-1"></i>
@@ -329,6 +489,18 @@ const JobApplicants = () => {
               </div>
             ))}
           </div>
+          
+          {/* Upload Test Results Button */}
+          <div className="text-center mt-4">
+            <button 
+              className="btn btn-outline-primary btn-lg"
+              onClick={() => navigate(`/job/${id}/uploadTestResults`)}
+            >
+              <i className="bi bi-file-earmark-spreadsheet me-2"></i>
+              Upload Test Results
+            </button>
+          </div>
+          </>
         )}
 
         {/* No Applicants State */}

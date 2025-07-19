@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { loginHR, logoutHR, registerHR } from "../controllers/hr.controller.js";
+import { loginHR, logoutHR, registerHR, getProfile, changePassword } from "../controllers/hr.controller.js";
 import { verifyToken } from "../middlewares/auth.middleware.js";
 
 const router = Router();
@@ -7,7 +7,9 @@ const router = Router();
 router.route('/register').post(registerHR)
 router.route('/login').post(loginHR)
 
-//protected route
-router.route('/logout').post(verifyToken,logoutHR)
+//protected routes
+router.route('/logout').post(verifyToken, logoutHR)
+router.route('/profile').get(verifyToken, getProfile)
+router.route('/change-password').put(verifyToken, changePassword)
 
 export default router;
