@@ -272,6 +272,17 @@ const UploadTestResults = () => {
             )}
           </div>
         </div>
+
+        {/* Next Button */}
+        <div className="text-center mt-5">
+          <button 
+            className="btn btn-primary btn-lg"
+            onClick={() => navigate(`/job/${jobId}/interview-scheduling`)}
+          >
+            <i className="bi bi-arrow-right me-2"></i>
+            Next: Schedule Interviews
+          </button>
+        </div>
       </div>
     </div>
   );
