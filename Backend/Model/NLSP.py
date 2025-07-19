@@ -76,10 +76,10 @@ def parse_resume(text,Jd_skill,Hr_company_name):
     email = parsed_data.get("Email", "") or ""
     linkedin = parsed_data.get("LinkedIn", "") or ""
     github = parsed_data.get("GitHub", "") or ""
-    for pattern in ([email, linkedin, github] and skills):
+    for pattern in ([email, linkedin, github] + skills):
         if pattern:
-            text_cleaned = text.replace(pattern, '')
-    text_cleaned = re.sub(r'\s+', ' ', text_cleaned).strip()
+            text = text.replace(pattern, '')
+    text_cleaned = re.sub(r'\s+', ' ', text).strip()
     
     doc_name = nlp(text_cleaned)
     for ent in doc_name.ents:
