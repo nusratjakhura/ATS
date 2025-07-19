@@ -177,31 +177,9 @@ const JobApplicants = () => {
   };
 
   return (
-    <div className="d-flex" style={{ height: '100vh' }}>
-      {/* Sidebar */}
-      <div className="bg-primary text-white p-3" style={{ width: '260px' }}>
-        <div className="text-center mb-4">
-          <h6 className="text-white">ATS Dashboard</h6>
-        </div>
-
-        <div className="d-grid gap-3">
-          <button className="btn text-white text-start text-center" onClick={() => navigate('/dashboard')}>
-            <i className="bi bi-speedometer2 me-2"></i>Dashboard
-          </button>
-          <button className="btn btn-light text-dark fw-bold" onClick={() => navigate('/postedJobs')}>
-            <i className="bi bi-briefcase me-2"></i>Jobs
-          </button>
-          <button className="btn text-white text-start text-center" onClick={() => navigate('/resumeUpload')}>
-            <i className="bi bi-file-earmark-arrow-up me-2"></i>Resume Upload
-          </button>
-          <button className="btn text-white text-start text-center" onClick={() => navigate('/screening')}>
-            <i className="bi bi-funnel me-2"></i>Screening
-          </button>
-        </div>
-      </div>
-      
+    <div style={{ height: '100vh' }}>
       {/* Main Content */}
-      <div className="flex-grow-1 p-4 bg-light">
+      <div className="p-4 bg-light">
         {/* Header */}
         <div className="d-flex justify-content-between align-items-center mb-4">
           <div>
