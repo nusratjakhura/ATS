@@ -87,6 +87,14 @@ const applicantSchema = new mongoose.Schema({
         type:String,
         default: "None"
     },
+    onboardingMessage:{
+        type:String,
+        default: null
+    },
+    onboardedAt:{
+        type:Date,
+        default: null
+    },
 },{timestamps:true});
 
 export const Applicant = mongoose.model("Applicant", applicantSchema)

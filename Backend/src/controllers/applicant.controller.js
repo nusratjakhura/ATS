@@ -387,4 +387,154 @@ const addTestScore = asyncHandler(async(req,res)=>{
   }
 })
 
-export { uploadResume, getApplicantData, updateStatus, addTestScore };
+const updateInterview1 = asyncHandler(async(req, res) => {
+  const { id } = req.params;
+  const { interview_1, interview_1_Comments } = req.body;
+
+  if (!id) {
+    throw new ApiError(400, "Applicant ID is required");
+  }
+
+  if (!interview_1 || !['Cleared', 'Not_Cleared', 'Undergoing'].includes(interview_1)) {
+    throw new ApiError(400, "Valid interview_1 status is required (Cleared, Not_Cleared, or Undergoing)");
+  }
+
+  try {
+    // Find and update the applicant
+    const updateData = {
+      interview_1: interview_1,
+      ...(interview_1_Comments && { interview_1_Comments: interview_1_Comments })
+    };
+
+    // Update status based on interview result
+    if (interview_1 === 'Cleared') {
+      updateData.status = 'Interview1_Cleared';
+    } else if (interview_1 === 'Not_Cleared') {
+      updateData.status = 'Rejected';
+    } else if (interview_1 === 'Undergoing') {
+      updateData.status = 'Interview1_Scheduled';
+    }
+
+    const updatedApplicant = await Applicant.findByIdAndUpdate(
+      id,
+      updateData,
+      { 
+        new: true, // Return the updated document
+        runValidators: true // Run mongoose validations
+      }
+    ).populate('jobApplied', 'title location');
+
+    if (!updatedApplicant) {
+      throw new ApiError(404, "Applicant not found");
+    }
+
+    return res.status(200).json(
+      new ApiResponse(200, {
+        applicant: updatedApplicant,
+        updatedAt: new Date()
+      }, "Interview 1 status updated successfully")
+    );
+
+  } catch (error) {
+    console.log("Can't update interview 1 status:", error);
+    throw new ApiError(500, "Can't update interview 1 status in database");
+  }
+});
+
+const updateInterview2 = asyncHandler(async(req, res) => {
+  const { id } = req.params;
+  const { interview_2, interview_2_Comments } = req.body;
+
+  if (!id) {
+    throw new ApiError(400, "Applicant ID is required");
+  }
+
+  if (!interview_2 || !['Cleared', 'Not_Cleared', 'Undergoing'].includes(interview_2)) {
+    throw new ApiError(400, "Valid interview_2 status is required (Cleared, Not_Cleared, or Undergoing)");
+  }
+
+  try {
+    // Find and update the applicant
+    const updateData = {
+      interview_2: interview_2,
+      ...(interview_2_Comments && { interview_2_Comments: interview_2_Comments })
+    };
+
+    // Update status based on interview result
+    if (interview_2 === 'Cleared') {
+      updateData.status = 'Interview2_Cleared';
+    } else if (interview_2 === 'Not_Cleared') {
+      updateData.status = 'Rejected';
+    } else if (interview_2 === 'Undergoing') {
+      updateData.status = 'Interview2_Scheduled';
+    }
+
+    const updatedApplicant = await Applicant.findByIdAndUpdate(
+      id,
+      updateData,
+      { 
+        new: true, // Return the updated document
+        runValidators: true // Run mongoose validations
+      }
+    ).populate('jobApplied', 'title location');
+
+    if (!updatedApplicant) {
+      throw new ApiError(404, "Applicant not found");
+    }
+
+    return res.status(200).json(
+      new ApiResponse(200, {
+        applicant: updatedApplicant,
+        updatedAt: new Date()
+      }, "Interview 2 status updated successfully")
+    );
+
+  } catch (error) {
+    console.log("Can't update interview 2 status:", error);
+    throw new ApiError(500, "Can't update interview 2 status in database");
+  }
+});
+
+const onboardCandidate = asyncHandler(async(req, res) => {
+  const { id } = req.params;
+  const { onboardingMessage } = req.body;
+
+  if (!id) {
+    throw new ApiError(400, "Applicant ID is required");
+  }
+
+  try {
+    // Find and update the applicant
+    const updateData = {
+      status: 'Selected',
+      onboardingMessage: onboardingMessage || 'Congratulations! You have been selected for the position.',
+      onboardedAt: new Date()
+    };
+
+    const updatedApplicant = await Applicant.findByIdAndUpdate(
+      id,
+      updateData,
+      { 
+        new: true, // Return the updated document
+        runValidators: true // Run mongoose validations
+      }
+    ).populate('jobApplied', 'title location');
+
+    if (!updatedApplicant) {
+      throw new ApiError(404, "Applicant not found");
+    }
+
+    return res.status(200).json(
+      new ApiResponse(200, {
+        applicant: updatedApplicant,
+        onboardedAt: new Date()
+      }, "Candidate onboarded successfully")
+    );
+
+  } catch (error) {
+    console.log("Can't onboard candidate:", error);
+    throw new ApiError(500, "Can't onboard candidate in database");
+  }
+});
+
+export { uploadResume, getApplicantData, updateStatus, addTestScore, updateInterview1, updateInterview2, onboardCandidate };

@@ -403,6 +403,19 @@ const InterviewResults = () => {
           </div>
         )}
 
+        {/* Next Button to Final Onboarding */}
+        {!loading && !error && interviewCandidates.length > 0 && (
+          <div className="text-center mt-5 mb-4">
+            <button 
+              className="btn btn-success btn-lg"
+              onClick={() => navigate(`/job/${jobId}/final-onboarding`)}
+            >
+              <i className="bi bi-arrow-right me-2"></i>
+              Next: Final Onboarding
+            </button>
+          </div>
+        )}
+
         {/* No Candidates State */}
         {!loading && !error && interviewCandidates.length === 0 && (
           <div className="text-center py-5">

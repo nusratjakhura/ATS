@@ -15,6 +15,7 @@ import ResumeUploadForJob from "./Pages/ResumeUploadForJob";
 import UploadTestResults from "./Pages/UploadTestResults";
 import InterviewScheduling from "./Pages/InterviewScheduling";
 import InterviewResults from "./Pages/InterviewResults";
+import FinalOnboarding from "./Pages/FinalOnboarding";
 import Navigation from './components/navigation';
 import Footer from './components/footer';
 
@@ -42,6 +43,7 @@ function App() {
                 <Route path="/job/:id/uploadTestResults" element={<UploadTestResults />} />
                 <Route path="/job/:id/interview-scheduling" element={<InterviewScheduling />} />
                 <Route path="/job/:id/interview-results" element={<InterviewResults />} />
+                <Route path="/job/:id/final-onboarding" element={<FinalOnboarding />} />
                 <Route path="/screening" element={<Screening />} />
                 <Route path="/resumeUpload" element={<ResumeUpload />} />
             </Routes>
