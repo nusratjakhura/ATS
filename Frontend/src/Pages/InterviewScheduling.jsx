@@ -88,51 +88,55 @@ const InterviewScheduling = () => {
     }
 
     setSendingInterviewLink(true);
-    const token = localStorage.getItem('token');
-    const updatedCandidates = [];
-    const errors = [];
+    // const token = localStorage.getItem('token');
 
     try {
-      for (const candidateId of selectedCandidates) {
-        try {
-          await axios.put(`/api/applicant/${candidateId}/updateStatus`, 
-            { status: 'Interview1_Scheduled' },
-            {
-              headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json'
-              }
-            }
-          );
-          updatedCandidates.push(candidateId);
-        } catch (error) {
-          console.error(`Error updating candidate ${candidateId}:`, error);
-          errors.push(candidateId);
+      // Use the sendInterviewLink API to send emails and update status
+      const emailData = {
+        applicantIds: selectedCandidates,
+        interviewLink: interviewLink.trim(),
+        interviewType: 'Interview 1',
+        interviewDateTime: new Date().toLocaleDateString() // You can make this dynamic later
+      };
+
+      const response = await axios.post('/api/applicant/sendInterviewLink', emailData);
+
+      if (response.data && response.data.data) {
+        const result = response.data.data;
+        
+        // Update local state - set status to 'Interview1_Scheduled' for successfully sent emails
+        setQualifiedCandidates(prev => 
+          prev.map(candidate => 
+            result.results.some(r => r.applicantId === candidate._id) 
+              ? { ...candidate, status: 'Interview1_Scheduled' }
+              : candidate
+          )
+        );
+
+        // Clear selections and interview link
+        setSelectedCandidates([]);
+        setInterviewLink('');
+
+        // Show detailed result
+        if (result.emailsFailed > 0) {
+          alert(`Interview invitations sent to ${result.emailsSent} candidate(s). ${result.emailsFailed} failed to send. Check console for details.`);
+          console.log('Email sending errors:', result.errors);
+        } else {
+          alert(`Interview invitations sent successfully to ${result.emailsSent} candidate(s)!`);
         }
       }
 
-      // Update local state
-      setQualifiedCandidates(prev => 
-        prev.map(candidate => 
-          updatedCandidates.includes(candidate._id) 
-            ? { ...candidate, status: 'Interview1_Scheduled' }
-            : candidate
-        )
-      );
-
-      // Clear selections and interview link
-      setSelectedCandidates([]);
-      setInterviewLink('');
-
-      if (errors.length === 0) {
-        alert(`Interview scheduled successfully for ${updatedCandidates.length} candidate(s)`);
-      } else {
-        alert(`Interview scheduled for ${updatedCandidates.length} candidate(s). ${errors.length} failed.`);
-      }
-
     } catch (error) {
-      console.error('Error scheduling interviews:', error);
-      alert('Failed to schedule interviews. Please try again.');
+      console.error('Error sending interview invitations:', error);
+      
+      if (error.response?.status === 401) {
+        alert('Authentication failed. Please login again.');
+        navigate('/login/hr');
+      } else if (error.response?.status === 403) {
+        alert('You can only send interview invitations to candidates for your own job postings.');
+      } else {
+        alert(error.response?.data?.message || 'Failed to send interview invitations. Please try again.');
+      }
     } finally {
       setSendingInterviewLink(false);
     }
@@ -208,7 +212,7 @@ const InterviewScheduling = () => {
                       <input 
                         type="url" 
                         className="form-control" 
-                        placeholder="Enter interview link (Zoom, Teams, etc.)"
+                        placeholder="Enter interview link (professional email will be sent automatically)"
                         value={interviewLink}
                         onChange={(e) => setInterviewLink(e.target.value)}
                       />
@@ -225,12 +229,12 @@ const InterviewScheduling = () => {
                           <span className="spinner-border spinner-border-sm me-2" role="status">
                             <span className="visually-hidden">Loading...</span>
                           </span>
-                          Scheduling...
+                          Sending Invitations...
                         </>
                       ) : (
                         <>
-                          <i className="bi bi-calendar-check me-2"></i>
-                          Schedule Interview ({selectedCandidates.length})
+                          <i className="bi bi-envelope me-2"></i>
+                          Send Interview Invitation ({selectedCandidates.length})
                         </>
                       )}
                     </button>

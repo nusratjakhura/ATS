@@ -126,51 +126,53 @@ const JobApplicants = () => {
     }
 
     setSendingTestLink(true);
-    const token = localStorage.getItem('token');
-    const updatedApplicants = [];
-    const errors = [];
+    // const token = localStorage.getItem('token');
 
     try {
-      for (const applicantId of selectedApplicants) {
-        try {
-          await axios.put(`/api/applicant/${applicantId}/updateStatus`, 
-            { status: 'Test_Sent' },
-            {
-              headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json'
-              }
-            }
-          );
-          updatedApplicants.push(applicantId);
-        } catch (error) {
-          console.error(`Error updating applicant ${applicantId}:`, error);
-          errors.push(applicantId);
+      // Prepare email data with only required fields
+      const emailData = {
+        applicantIds: selectedApplicants,
+        testLink: testLink.trim()
+      };
+
+      const response = await axios.post('/api/applicant/sendTestLink', emailData);
+
+      if (response.data && response.data.data) {
+        const result = response.data.data;
+        
+        // Update local state - set status to 'Test_Sent' for successfully sent emails
+        setApplicants(prev => 
+          prev.map(applicant => 
+            result.results.some(r => r.applicantId === applicant._id) 
+              ? { ...applicant, status: 'Test_Sent' }
+              : applicant
+          )
+        );
+
+        // Clear selections and test link
+        setSelectedApplicants([]);
+        setTestLink('');
+
+        // Show detailed result
+        if (result.emailsFailed > 0) {
+          alert(`Test links sent to ${result.emailsSent} applicant(s). ${result.emailsFailed} failed to send. Check console for details.`);
+          console.log('Email sending errors:', result.errors);
+        } else {
+          alert(`Test links sent successfully to ${result.emailsSent} applicant(s)!`);
         }
-      }
-
-      // Update local state
-      setApplicants(prev => 
-        prev.map(applicant => 
-          updatedApplicants.includes(applicant._id) 
-            ? { ...applicant, status: 'Test_Sent' }
-            : applicant
-        )
-      );
-
-      // Clear selections and test link
-      setSelectedApplicants([]);
-      setTestLink('');
-
-      if (errors.length === 0) {
-        alert(`Test link sent successfully to ${updatedApplicants.length} applicant(s)`);
-      } else {
-        alert(`Test link sent to ${updatedApplicants.length} applicant(s). ${errors.length} failed.`);
       }
 
     } catch (error) {
       console.error('Error sending test links:', error);
-      alert('Failed to send test links. Please try again.');
+      
+      if (error.response?.status === 401) {
+        alert('Authentication failed. Please login again.');
+        navigate('/login/hr');
+      } else if (error.response?.status === 403) {
+        alert('You can only send test links to applicants for your own job postings.');
+      } else {
+        alert(error.response?.data?.message || 'Failed to send test links. Please try again.');
+      }
     } finally {
       setSendingTestLink(false);
     }
@@ -269,7 +271,7 @@ const JobApplicants = () => {
                       <input 
                         type="url" 
                         className="form-control" 
-                        placeholder="Enter test link URL"
+                        placeholder="Enter test link URL (professional email will be sent automatically)"
                         value={testLink}
                         onChange={(e) => setTestLink(e.target.value)}
                       />
@@ -290,8 +292,8 @@ const JobApplicants = () => {
                         </>
                       ) : (
                         <>
-                          <i className="bi bi-send me-2"></i>
-                          Send Test Link ({selectedApplicants.length})
+                          <i className="bi bi-envelope me-2"></i>
+                          Send Test Invitation ({selectedApplicants.length})
                         </>
                       )}
                     </button>
@@ -305,12 +307,23 @@ const JobApplicants = () => {
               <div className="col-12 mb-3">
                 <small className="text-muted">
                   <i className="bi bi-sort-down me-1"></i>
-                  Sorted by skill match percentage (highest first)
+                  Sorted by skill match percentage (highest first) • Click on applicant name to view full profile
                 </small>
               </div>
             {applicants.map((applicant, index) => (
               <div key={applicant._id} className="col-12 mb-4">
-                <div className="card border-0 shadow-sm">
+                <div 
+                  className="card border-0 shadow-sm applicant-card" 
+                  style={{ transition: 'transform 0.2s, box-shadow 0.2s' }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'translateY(-2px)';
+                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.12)';
+                  }}
+                >
                   <div className="card-body">
                     <div className="row align-items-center">
                       {/* Checkbox for selection */}
@@ -321,7 +334,10 @@ const JobApplicants = () => {
                             type="checkbox" 
                             id={`applicant-${applicant._id}`}
                             checked={selectedApplicants.includes(applicant._id)}
-                            onChange={() => handleSelectApplicant(applicant._id)}
+                            onChange={(e) => {
+                              e.stopPropagation(); // Prevent any parent click events
+                              handleSelectApplicant(applicant._id);
+                            }}
                           />
                         </div>
                       </div>
@@ -336,7 +352,19 @@ const JobApplicants = () => {
                             </span>
                           </div>
                           <div>
-                            <h6 className="mb-1">{applicant.fullName || 'Unknown'}</h6>
+                            <h6 
+                              className="mb-1"
+                              style={{ cursor: 'pointer', color: '#0d6efd' }}
+                              onClick={() => navigate(`/applicant/${applicant._id}`)}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.textDecoration = 'underline';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.textDecoration = 'none';
+                              }}
+                            >
+                              {applicant.fullName || 'Unknown'}
+                            </h6>
                             <small className="text-muted">{applicant.email || 'No email'}</small>
                             {applicant.phone && (
                               <div>
@@ -384,7 +412,7 @@ const JobApplicants = () => {
                       <div className="col-md-2 text-center">
                         <div className="mb-2">
                           <span className={`badge ${getScoreBadge(applicant.skillMatch || 0)} fs-6`}>
-                            {applicant.skillMatch || 0}%
+                            {(applicant.skillMatch || 0).toFixed(2)}%
                           </span>
                           <div>
                             <small className="text-muted">Skill Match</small>
@@ -409,7 +437,10 @@ const JobApplicants = () => {
                             {applicant.uploadedResume && (
                               <button 
                                 className="btn btn-outline-primary btn-sm"
-                                onClick={() => handleDownloadCV(applicant.uploadedResume, applicant.fullName)}
+                                onClick={(e) => {
+                                  e.stopPropagation(); // Prevent any parent click events
+                                  handleDownloadCV(applicant.uploadedResume, applicant.fullName);
+                                }}
                                 title="Download Resume"
                               >
                                 <i className="bi bi-download"></i>
@@ -417,8 +448,11 @@ const JobApplicants = () => {
                             )}
                             <button 
                               className="btn btn-primary btn-sm"
-                              onClick={() => navigate(`/applicant/${applicant._id}`)}
-                              title="View Details"
+                              onClick={(e) => {
+                                e.stopPropagation(); // Prevent any parent click events
+                                navigate(`/applicant/${applicant._id}`);
+                              }}
+                              title="View Full Profile"
                             >
                               <i className="bi bi-eye"></i>
                             </button>
@@ -445,6 +479,7 @@ const JobApplicants = () => {
                               target="_blank" 
                               rel="noopener noreferrer"
                               className="btn btn-outline-primary btn-sm"
+                              onClick={(e) => e.stopPropagation()} // Prevent any parent click events
                             >
                               <i className="bi bi-linkedin"></i>
                             </a>
@@ -455,6 +490,7 @@ const JobApplicants = () => {
                               target="_blank" 
                               rel="noopener noreferrer"
                               className="btn btn-outline-dark btn-sm"
+                              onClick={(e) => e.stopPropagation()} // Prevent any parent click events
                             >
                               <i className="bi bi-github"></i>
                             </a>

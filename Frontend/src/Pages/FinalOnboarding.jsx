@@ -30,10 +30,8 @@ const FinalOnboarding = () => {
       //   return;
       // }
 
-      const response = await axios.get(`/api/job/${jobId}/applicants`, {
-        
-      });
-      console.log(response)
+      const response = await axios.get(`/api/job/${jobId}/applicants`);
+      // console.log(response)
 
       if (response.data && response.data.data && response.data.data.applicants) {
         // Filter candidates who are eligible for onboarding (Interview2_Cleared or already Selected)
@@ -84,22 +82,30 @@ const FinalOnboarding = () => {
       setError('');
       setSuccessMessage('');
 
-      // const token = localStorage.getItem('token');
-      // if (!token) {
-      //   setError('Authentication required');
-      //   return;
-      // }
+   
 
-      // Onboard each selected candidate
-      const onboardingPromises = selectedCandidates.map(candidateId =>
-        axios.put(`/api/applicant/${candidateId}/onboard`, {
-          onboardingMessage: onboardingMessage.trim()
-        })
-      );
+      // Use the sendOnboardingEmail API to send emails and update status
+      const emailData = {
+        applicantIds: selectedCandidates,
+        onboardingMessage: onboardingMessage.trim(),
+        startDate: new Date().toLocaleDateString() // You can make this dynamic later
+      };
 
-      await Promise.all(onboardingPromises);
+      const response = await axios.post('/api/applicant/sendOnboardingEmail', emailData);
 
-      setSuccessMessage(`Successfully onboarded ${selectedCandidates.length} candidate(s)!`);
+      if (response.data && response.data.data) {
+        const result = response.data.data;
+        
+        // Show detailed result
+        if (result.emailsFailed > 0) {
+          setSuccessMessage(`Onboarding emails sent to ${result.emailsSent} candidate(s). ${result.emailsFailed} failed to send.`);
+          setError('Some emails failed to send. Check console for details.');
+          console.log('Email sending errors:', result.errors);
+        } else {
+          setSuccessMessage(`Onboarding emails sent successfully to ${result.emailsSent} candidate(s)! Welcome to the team! 🎉`);
+        }
+      }
+
       setSelectedCandidates([]);
       setOnboardingMessage('');
       
@@ -107,8 +113,15 @@ const FinalOnboarding = () => {
       fetchCandidates();
 
     } catch (error) {
-      console.error('Error onboarding candidates:', error);
-      setError('Failed to onboard candidates. Please try again.');
+      console.error('Error sending onboarding emails:', error);
+      
+      if (error.response?.status === 401) {
+        setError('Authentication failed. Please login again.');
+      } else if (error.response?.status === 403) {
+        setError('You can only send onboarding emails to candidates for your own job postings.');
+      } else {
+        setError(error.response?.data?.message || 'Failed to send onboarding emails. Please try again.');
+      }
     } finally {
       setOnboardingLoading(false);
     }
