@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { getApplicantData, updateStatus, uploadResume, addTestScore, updateInterview1, updateInterview2, onboardCandidate} from "../controllers/applicant.controller.js";
+import { getApplicantData, updateStatus, uploadResume, addTestScore, updateInterview1, updateInterview2, onboardCandidate, sendTestLink, sendInterviewLink, sendOnboardingEmail} from "../controllers/applicant.controller.js";
 import { upload } from "../middlewares/multer.middleware.js";
 import { verifyToken } from "../middlewares/auth.middleware.js";
 
@@ -28,5 +28,10 @@ router.route('/:id/updateInterview2').put(verifyToken, updateInterview2);
 
 //onboard candidate
 router.route('/:id/onboard').put(verifyToken, onboardCandidate);
+
+// Email sending routes
+router.route('/sendTestLink').post(verifyToken, sendTestLink);
+router.route('/sendInterviewLink').post(verifyToken, sendInterviewLink);
+router.route('/sendOnboardingEmail').post(verifyToken, sendOnboardingEmail);
 
 export default router;

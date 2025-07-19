@@ -2,6 +2,8 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { uploadFile } from "../utils/fileUpload.js";
+import SENDMAIL from "../utils/mail.js";
+import HTML_TEMPLATE from '../utils/template.js'
 import { Applicant } from "../models/applicant.model.js";
 import { JobDescription } from "../models/jobDescription.model.js";
 import { exec } from "child_process";
@@ -537,4 +539,514 @@ const onboardCandidate = asyncHandler(async(req, res) => {
   }
 });
 
-export { uploadResume, getApplicantData, updateStatus, addTestScore, updateInterview1, updateInterview2, onboardCandidate };
+const sendTestLink = asyncHandler(async(req, res) => {
+  const { applicantIds, testLink } = req.body;
+  const { _id: hrId } = req.user;
+
+  // Validation
+  if (!applicantIds || !Array.isArray(applicantIds) || applicantIds.length === 0) {
+    throw new ApiError(400, "Applicant IDs array is required");
+  }
+
+  if (!testLink || !testLink.trim()) {
+    throw new ApiError(400, "Test link is required");
+  }
+
+  if (!hrId) {
+    throw new ApiError(401, "HR authentication required");
+  }
+
+  try {
+    // Fetch applicants by IDs and verify they belong to jobs created by this HR
+    const applicants = await Applicant.find({
+      _id: { $in: applicantIds }
+    }).populate({
+      path: 'jobApplied',
+      select: 'title createdBy',
+      populate: {
+        path: 'createdBy',
+        select: 'name companyName'
+      }
+    });
+
+    if (applicants.length === 0) {
+      throw new ApiError(404, "No applicants found with the provided IDs");
+    }
+
+    // Verify that all applicants belong to jobs created by this HR
+    const unauthorizedApplicants = applicants.filter(applicant => 
+      !applicant.jobApplied || 
+      applicant.jobApplied.createdBy._id.toString() !== hrId.toString()
+    );
+
+    if (unauthorizedApplicants.length > 0) {
+      throw new ApiError(403, "You can only send test links to applicants for your own job postings");
+    }
+
+    // Filter applicants who have valid email addresses
+    const validApplicants = applicants.filter(applicant => 
+      applicant.email && applicant.email.trim() !== ''
+    );
+
+    if (validApplicants.length === 0) {
+      throw new ApiError(400, "No applicants have valid email addresses");
+    }
+
+    // Get HR info from the first applicant (all should be from same job/HR)
+    const hrInfo = validApplicants[0].jobApplied.createdBy;
+    const jobTitle = validApplicants[0].jobApplied.title;
+    
+    // Create predefined professional email content
+    const emailMessage = `Dear Candidates,
+
+We hope this email finds you well. Thank you for your interest in the ${jobTitle} position at ${hrInfo.companyName || 'our company'}.
+
+We have reviewed your applications and would like to invite you to take the next step in our recruitment process. Please complete the assessment test using the link provided below.
+
+Instructions:
+• Click on the "Take Test Now" button below to access the assessment
+• Complete the test within the given time frame
+• Ensure you have a stable internet connection
+• Contact us if you encounter any technical issues
+
+We look forward to your participation and wish you the best of luck!
+
+Best regards,
+${hrInfo.name || 'HR Team'}
+${hrInfo.companyName || 'Company Name'}`;
+
+    // Prepare email addresses array
+    const emailAddresses = validApplicants.map(applicant => applicant.email);
+
+    const mailDetails = {
+      from: {
+        name: hrInfo.companyName || 'ATS System',
+        address: process.env.GMAIL_USER
+      },
+      to: emailAddresses,
+      cc: hrInfo.email || process.env.GMAIL_USER, // Add HR email in CC
+      subject: `Assessment Test Invitation - ${jobTitle} Position`,
+      html: HTML_TEMPLATE({
+        companyName: hrInfo.companyName || 'Company Name',
+        applicantName: 'Dear Candidates',
+        jobTitle: jobTitle,
+        testLink: testLink,
+        message: emailMessage,
+        hrName: hrInfo.name || 'HR Team',
+        buttonText: 'Take Test Now'
+      })
+    };
+
+    let emailResults = [];
+    let emailErrors = [];
+
+    try {
+      // Send single email to all applicants
+      await new Promise((resolve, reject) => {
+        SENDMAIL(mailDetails, (info) => {
+          if (info && info.messageId) {
+            resolve(info);
+          } else {
+            reject(new Error('Failed to send email'));
+          }
+        });
+      });
+
+      // Update all applicants status to 'Test_Sent'
+      await Applicant.updateMany(
+        { _id: { $in: applicantIds } },
+        { status: 'Test_Sent' }
+      );
+
+      // Prepare success results
+      emailResults = validApplicants.map(applicant => ({
+        applicantId: applicant._id,
+        email: applicant.email,
+        name: applicant.fullName,
+        status: 'sent'
+      }));
+
+    } catch (emailError) {
+      console.error(`Error sending email:`, emailError);
+      
+      // Prepare error results
+      emailErrors = validApplicants.map(applicant => ({
+        applicantId: applicant._id,
+        email: applicant.email,
+        name: applicant.fullName,
+        error: emailError.message,
+        status: 'failed'
+      }));
+    }
+
+    // Prepare response
+    const response = {
+      totalApplicants: applicantIds.length,
+      validEmailsFound: validApplicants.length,
+      emailsSent: emailResults.length,
+      emailsFailed: emailErrors.length,
+      results: emailResults,
+      ...(emailErrors.length > 0 && { errors: emailErrors })
+    };
+
+    const message = `Test links sent successfully. ${emailResults.length} emails sent, ${emailErrors.length} failed.`;
+
+    return res.status(200).json(
+      new ApiResponse(200, response, message)
+    );
+
+  } catch (error) {
+    console.log("Error sending test links:", error);
+    throw new ApiError(500, "Failed to send test links");
+  }
+});
+
+const sendInterviewLink = asyncHandler(async(req, res) => {
+  const { applicantIds, interviewLink, interviewType = 'Interview', interviewDateTime } = req.body;
+  const { _id: hrId } = req.user;
+
+  // Validation
+  if (!applicantIds || !Array.isArray(applicantIds) || applicantIds.length === 0) {
+    throw new ApiError(400, "Applicant IDs array is required");
+  }
+
+  if (!interviewLink || !interviewLink.trim()) {
+    throw new ApiError(400, "Interview link is required");
+  }
+
+  if (!hrId) {
+    throw new ApiError(401, "HR authentication required");
+  }
+
+  try {
+    // Fetch applicants by IDs and verify they belong to jobs created by this HR
+    const applicants = await Applicant.find({
+      _id: { $in: applicantIds }
+    }).populate({
+      path: 'jobApplied',
+      select: 'title createdBy',
+      populate: {
+        path: 'createdBy',
+        select: 'name companyName email'
+      }
+    });
+
+    if (applicants.length === 0) {
+      throw new ApiError(404, "No applicants found with the provided IDs");
+    }
+
+    // Verify that all applicants belong to jobs created by this HR
+    const unauthorizedApplicants = applicants.filter(applicant => 
+      !applicant.jobApplied || 
+      applicant.jobApplied.createdBy._id.toString() !== hrId.toString()
+    );
+
+    if (unauthorizedApplicants.length > 0) {
+      throw new ApiError(403, "You can only send interview links to applicants for your own job postings");
+    }
+
+    // Filter applicants who have valid email addresses
+    const validApplicants = applicants.filter(applicant => 
+      applicant.email && applicant.email.trim() !== ''
+    );
+
+    if (validApplicants.length === 0) {
+      throw new ApiError(400, "No applicants have valid email addresses");
+    }
+
+    // Get HR info from the first applicant (all should be from same job/HR)
+    const hrInfo = validApplicants[0].jobApplied.createdBy;
+    const jobTitle = validApplicants[0].jobApplied.title;
+    
+    // Create predefined professional interview email content
+    const emailMessage = `Dear Candidates,
+
+Congratulations! We are pleased to inform you that you have successfully passed the initial assessment for the ${jobTitle} position at ${hrInfo.companyName || 'our company'}.
+
+We would like to invite you to the next stage of our recruitment process - ${interviewType}. Please join us using the link provided below.
+
+${interviewDateTime ? `Interview Details:
+• Date & Time: ${interviewDateTime}
+• Type: ${interviewType}` : ''}
+
+Instructions:
+• Click on the "Join Interview" button below to access the interview
+• Please join 5-10 minutes before the scheduled time
+• Ensure you have a stable internet connection and working camera/microphone
+• Prepare for technical and behavioral questions related to the position
+• Have your resume and any relevant documents ready
+
+We look forward to meeting you and discussing your qualifications in detail.
+
+Best regards,
+${hrInfo.name || 'HR Team'}
+${hrInfo.companyName || 'Company Name'}`;
+
+    // Prepare email addresses array
+    const emailAddresses = validApplicants.map(applicant => applicant.email);
+
+    const mailDetails = {
+      from: {
+        name: hrInfo.companyName || 'ATS System',
+        address: process.env.GMAIL_USER
+      },
+      to: emailAddresses,
+      cc: hrInfo.email || process.env.GMAIL_USER,
+      subject: `${interviewType} Invitation - ${jobTitle} Position`,
+      html: HTML_TEMPLATE({
+        companyName: hrInfo.companyName || 'Company Name',
+        applicantName: 'Dear Candidates',
+        jobTitle: jobTitle,
+        testLink: interviewLink,
+        message: emailMessage,
+        hrName: hrInfo.name || 'HR Team',
+        buttonText: 'Join Interview'
+      })
+    };
+
+    let emailResults = [];
+    let emailErrors = [];
+
+    try {
+      // Send single email to all applicants
+      await new Promise((resolve, reject) => {
+        SENDMAIL(mailDetails, (info) => {
+          if (info && info.messageId) {
+            resolve(info);
+          } else {
+            reject(new Error('Failed to send email'));
+          }
+        });
+      });
+
+      // Update all applicants status based on interview type
+      const updateStatus = interviewType.toLowerCase().includes('interview 1') || interviewType.toLowerCase().includes('first') 
+        ? 'Interview1_Scheduled' 
+        : 'Interview2_Scheduled';
+
+      await Applicant.updateMany(
+        { _id: { $in: applicantIds } },
+        { status: updateStatus }
+      );
+
+      // Prepare success results
+      emailResults = validApplicants.map(applicant => ({
+        applicantId: applicant._id,
+        email: applicant.email,
+        name: applicant.fullName,
+        status: 'sent'
+      }));
+
+    } catch (emailError) {
+      console.error(`Error sending interview email:`, emailError);
+      
+      // Prepare error results
+      emailErrors = validApplicants.map(applicant => ({
+        applicantId: applicant._id,
+        email: applicant.email,
+        name: applicant.fullName,
+        error: emailError.message,
+        status: 'failed'
+      }));
+    }
+
+    // Prepare response
+    const response = {
+      totalApplicants: applicantIds.length,
+      validEmailsFound: validApplicants.length,
+      emailsSent: emailResults.length,
+      emailsFailed: emailErrors.length,
+      results: emailResults,
+      ...(emailErrors.length > 0 && { errors: emailErrors })
+    };
+
+    const message = `Interview invitations sent successfully. ${emailResults.length} emails sent, ${emailErrors.length} failed.`;
+
+    return res.status(200).json(
+      new ApiResponse(200, response, message)
+    );
+
+  } catch (error) {
+    console.log("Error sending interview links:", error);
+    throw new ApiError(500, "Failed to send interview links");
+  }
+});
+
+const sendOnboardingEmail = asyncHandler(async(req, res) => {
+  const { applicantIds, onboardingMessage, startDate, onboardingDocuments = [] } = req.body;
+  const { _id: hrId } = req.user;
+
+  // Validation
+  if (!applicantIds || !Array.isArray(applicantIds) || applicantIds.length === 0) {
+    throw new ApiError(400, "Applicant IDs array is required");
+  }
+
+  if (!hrId) {
+    throw new ApiError(401, "HR authentication required");
+  }
+
+  try {
+    // Fetch applicants by IDs and verify they belong to jobs created by this HR
+    const applicants = await Applicant.find({
+      _id: { $in: applicantIds }
+    }).populate({
+      path: 'jobApplied',
+      select: 'title createdBy location salary',
+      populate: {
+        path: 'createdBy',
+        select: 'name companyName email'
+      }
+    });
+
+    if (applicants.length === 0) {
+      throw new ApiError(404, "No applicants found with the provided IDs");
+    }
+
+    // Verify that all applicants belong to jobs created by this HR
+    const unauthorizedApplicants = applicants.filter(applicant => 
+      !applicant.jobApplied || 
+      applicant.jobApplied.createdBy._id.toString() !== hrId.toString()
+    );
+
+    if (unauthorizedApplicants.length > 0) {
+      throw new ApiError(403, "You can only send onboarding emails to applicants for your own job postings");
+    }
+
+    // Filter applicants who have valid email addresses
+    const validApplicants = applicants.filter(applicant => 
+      applicant.email && applicant.email.trim() !== ''
+    );
+
+    if (validApplicants.length === 0) {
+      throw new ApiError(400, "No applicants have valid email addresses");
+    }
+
+    // Get HR info from the first applicant (all should be from same job/HR)
+    const hrInfo = validApplicants[0].jobApplied.createdBy;
+    const jobTitle = validApplicants[0].jobApplied.title;
+    const jobLocation = validApplicants[0].jobApplied.location;
+    
+    // Create predefined professional onboarding email content
+    const defaultMessage = `Dear New Team Members,
+
+🎉 Congratulations! We are thrilled to welcome you to ${hrInfo.companyName || 'our company'} family!
+
+After a thorough evaluation process, we are excited to offer you the position of ${jobTitle}. Your skills, experience, and enthusiasm impressed our team, and we believe you will be a valuable addition to our organization.
+
+${onboardingMessage ? `Personal Message:
+${onboardingMessage}
+
+` : ''}Position Details:
+• Job Title: ${jobTitle}
+• Location: ${jobLocation || 'As discussed'}
+${startDate ? `• Start Date: ${startDate}` : ''}
+
+Next Steps:
+• HR will contact you shortly with detailed onboarding information
+• Please prepare the required documents for your first day
+• Look out for welcome package and company handbook
+• Feel free to reach out if you have any questions
+
+${onboardingDocuments.length > 0 ? `Required Documents:
+${onboardingDocuments.map(doc => `• ${doc}`).join('\n')}
+
+` : ''}We are excited to have you on board and look forward to your contributions to our team's success!
+
+Welcome aboard!
+
+Best regards,
+${hrInfo.name || 'HR Team'}
+${hrInfo.companyName || 'Company Name'}`;
+
+    // Prepare email addresses array
+    const emailAddresses = validApplicants.map(applicant => applicant.email);
+
+    const mailDetails = {
+      from: {
+        name: hrInfo.companyName || 'ATS System',
+        address: process.env.GMAIL_USER
+      },
+      to: emailAddresses,
+      cc: hrInfo.email || process.env.GMAIL_USER,
+      subject: `🎉 Welcome to ${hrInfo.companyName || 'Our Company'} - ${jobTitle} Position`,
+      html: HTML_TEMPLATE({
+        companyName: hrInfo.companyName || 'Company Name',
+        applicantName: 'Dear New Team Members',
+        jobTitle: jobTitle,
+        testLink: '#', // No link needed for onboarding email
+        message: defaultMessage,
+        hrName: hrInfo.name || 'HR Team',
+        buttonText: 'Welcome to the Team!'
+      })
+    };
+
+    let emailResults = [];
+    let emailErrors = [];
+
+    try {
+      // Send single email to all selected candidates
+      await new Promise((resolve, reject) => {
+        SENDMAIL(mailDetails, (info) => {
+          if (info && info.messageId) {
+            resolve(info);
+          } else {
+            reject(new Error('Failed to send email'));
+          }
+        });
+      });
+
+      // Update all applicants status to 'Selected' and add onboarding info
+      await Applicant.updateMany(
+        { _id: { $in: applicantIds } },
+        { 
+          status: 'Selected',
+          onboardingMessage: onboardingMessage || 'Congratulations! You have been selected for the position.',
+          onboardedAt: new Date(),
+          ...(startDate && { startDate: new Date(startDate) })
+        }
+      );
+
+      // Prepare success results
+      emailResults = validApplicants.map(applicant => ({
+        applicantId: applicant._id,
+        email: applicant.email,
+        name: applicant.fullName,
+        status: 'sent'
+      }));
+
+    } catch (emailError) {
+      console.error(`Error sending onboarding email:`, emailError);
+      
+      // Prepare error results
+      emailErrors = validApplicants.map(applicant => ({
+        applicantId: applicant._id,
+        email: applicant.email,
+        name: applicant.fullName,
+        error: emailError.message,
+        status: 'failed'
+      }));
+    }
+
+    // Prepare response
+    const response = {
+      totalApplicants: applicantIds.length,
+      validEmailsFound: validApplicants.length,
+      emailsSent: emailResults.length,
+      emailsFailed: emailErrors.length,
+      results: emailResults,
+      ...(emailErrors.length > 0 && { errors: emailErrors })
+    };
+
+    const message = `Onboarding emails sent successfully. ${emailResults.length} emails sent, ${emailErrors.length} failed.`;
+
+    return res.status(200).json(
+      new ApiResponse(200, response, message)
+    );
+
+  } catch (error) {
+    console.log("Error sending onboarding emails:", error);
+    throw new ApiError(500, "Failed to send onboarding emails");
+  }
+});
+
+export { uploadResume, getApplicantData, updateStatus, addTestScore, updateInterview1, updateInterview2, onboardCandidate, sendTestLink, sendInterviewLink, sendOnboardingEmail };
