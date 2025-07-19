@@ -4,6 +4,8 @@ import { ApiResponse } from "../utils/ApiResponse.js";
 import bcrypt from 'bcrypt'
 import jwt from 'jsonwebtoken'
 import { HR } from "../models/hr.model.js";
+import { JobDescription } from "../models/jobDescription.model.js";
+import { Applicant } from "../models/applicant.model.js";
 
 const registerHR = asyncHandler(async(req,res)=>{
     const {name, email, password, companyName} = req.body;
@@ -164,4 +166,75 @@ const changePassword = asyncHandler(async(req, res) => {
     }
 });
 
-export {registerHR, loginHR, logoutHR, getProfile, changePassword}
+const getDashboardStats = asyncHandler(async(req, res) => {
+    const { _id: hrId } = req.user;
+    
+    if (!hrId) {
+        throw new ApiError(401, "You must be signed in first");
+    }
+
+    try {
+        // Get total jobs posted by this HR
+        const totalJobs = await JobDescription.countDocuments({ createdBy: hrId });
+
+        // Get all job IDs created by this HR
+        const hrJobs = await JobDescription.find({ createdBy: hrId }).select('_id');
+        const hrJobIds = hrJobs.map(job => job._id);
+
+        // Get total applicants for HR's jobs
+        const totalApplicants = await Applicant.countDocuments({ 
+            jobApplied: { $in: hrJobIds } 
+        });
+
+        // Get total interviews scheduled (Interview1_Scheduled + Interview2_Scheduled + Interview1_Cleared + Interview2_Cleared)
+        const totalInterviews = await Applicant.countDocuments({
+            jobApplied: { $in: hrJobIds },
+            status: { 
+                $in: ['Interview1_Scheduled', 'Interview2_Scheduled', 'Interview1_Cleared', 'Interview2_Cleared', 'Selected'] 
+            }
+        });
+
+        // Get candidates selected/onboarded
+        const totalSelected = await Applicant.countDocuments({
+            jobApplied: { $in: hrJobIds },
+            status: 'Selected'
+        });
+
+        // Get recent jobs with applicant counts
+        const recentJobs = await JobDescription.find({ createdBy: hrId })
+            .sort({ createdAt: -1 })
+            .limit(10)
+            .lean();
+
+        // Add applicant count for each job
+        for (let job of recentJobs) {
+            const applicantCount = await Applicant.countDocuments({ jobApplied: job._id });
+            const interviewCount = await Applicant.countDocuments({
+                jobApplied: job._id,
+                status: { 
+                    $in: ['Interview1_Scheduled', 'Interview2_Scheduled', 'Interview1_Cleared', 'Interview2_Cleared', 'Selected'] 
+                }
+            });
+            job.applicantCount = applicantCount;
+            job.interviewCount = interviewCount;
+        }
+
+        return res.status(200).json(
+            new ApiResponse(200, {
+                stats: {
+                    totalJobs,
+                    totalApplicants,
+                    totalInterviews,
+                    totalSelected
+                },
+                recentJobs
+            }, "Dashboard stats retrieved successfully")
+        );
+
+    } catch (error) {
+        console.log("Error getting dashboard stats:", error);
+        throw new ApiError(500, "Failed to retrieve dashboard statistics");
+    }
+});
+
+export {registerHR, loginHR, logoutHR, getProfile, changePassword, getDashboardStats}
