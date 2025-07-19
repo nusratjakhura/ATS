@@ -305,12 +305,24 @@ const JobApplicants = () => {
               <div className="col-12 mb-3">
                 <small className="text-muted">
                   <i className="bi bi-sort-down me-1"></i>
-                  Sorted by skill match percentage (highest first)
+                  Sorted by skill match percentage (highest first) • Click on any card to view full profile
                 </small>
               </div>
             {applicants.map((applicant, index) => (
               <div key={applicant._id} className="col-12 mb-4">
-                <div className="card border-0 shadow-sm">
+                <div 
+                  className="card border-0 shadow-sm applicant-card" 
+                  style={{ cursor: 'pointer', transition: 'transform 0.2s, box-shadow 0.2s' }}
+                  onClick={() => navigate(`/applicant/${applicant._id}`)}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'translateY(-2px)';
+                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.12)';
+                  }}
+                >
                   <div className="card-body">
                     <div className="row align-items-center">
                       {/* Checkbox for selection */}
@@ -321,7 +333,10 @@ const JobApplicants = () => {
                             type="checkbox" 
                             id={`applicant-${applicant._id}`}
                             checked={selectedApplicants.includes(applicant._id)}
-                            onChange={() => handleSelectApplicant(applicant._id)}
+                            onChange={(e) => {
+                              e.stopPropagation(); // Prevent card click when checkbox is clicked
+                              handleSelectApplicant(applicant._id);
+                            }}
                           />
                         </div>
                       </div>
@@ -409,7 +424,10 @@ const JobApplicants = () => {
                             {applicant.uploadedResume && (
                               <button 
                                 className="btn btn-outline-primary btn-sm"
-                                onClick={() => handleDownloadCV(applicant.uploadedResume, applicant.fullName)}
+                                onClick={(e) => {
+                                  e.stopPropagation(); // Prevent card click
+                                  handleDownloadCV(applicant.uploadedResume, applicant.fullName);
+                                }}
                                 title="Download Resume"
                               >
                                 <i className="bi bi-download"></i>
@@ -417,8 +435,11 @@ const JobApplicants = () => {
                             )}
                             <button 
                               className="btn btn-primary btn-sm"
-                              onClick={() => navigate(`/applicant/${applicant._id}`)}
-                              title="View Details"
+                              onClick={(e) => {
+                                e.stopPropagation(); // Prevent card click
+                                navigate(`/applicant/${applicant._id}`);
+                              }}
+                              title="View Full Profile"
                             >
                               <i className="bi bi-eye"></i>
                             </button>
@@ -445,6 +466,7 @@ const JobApplicants = () => {
                               target="_blank" 
                               rel="noopener noreferrer"
                               className="btn btn-outline-primary btn-sm"
+                              onClick={(e) => e.stopPropagation()} // Prevent card click
                             >
                               <i className="bi bi-linkedin"></i>
                             </a>
@@ -455,6 +477,7 @@ const JobApplicants = () => {
                               target="_blank" 
                               rel="noopener noreferrer"
                               className="btn btn-outline-dark btn-sm"
+                              onClick={(e) => e.stopPropagation()} // Prevent card click
                             >
                               <i className="bi bi-github"></i>
                             </a>
