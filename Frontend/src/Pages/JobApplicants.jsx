@@ -6,18 +6,41 @@ const JobApplicants = () => {
   const navigate = useNavigate();
   const { id } = useParams(); // Get job ID from URL
   const [applicants, setApplicants] = useState([]);
+  const [filteredApplicants, setFilteredApplicants] = useState([]);
   const [jobDetails, setJobDetails] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedApplicants, setSelectedApplicants] = useState([]);
   const [testLink, setTestLink] = useState('');
   const [sendingTestLink, setSendingTestLink] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
+  const [exportLoading, setExportLoading] = useState(false);
+  
+  // Filter states
+  const [filters, setFilters] = useState({
+    qualifications: [],
+    experience: 'All Experience',
+    gender: '',
+    aptitudeTest: 'All',
+    firstInterview: 'All',
+    secondInterview: 'All',
+    applicationDateFrom: '',
+    applicationDateTo: '',
+    status: 'All',
+    skillMatchMin: 0,
+    skillMatchMax: 100
+  });
 
   useEffect(() => {
     if (id) {
       fetchApplicants();
     }
   }, [id]);
+
+  // Apply filters whenever applicants or filters change
+  useEffect(() => {
+    applyFilters();
+  }, [applicants, filters]);
 
   const fetchApplicants = async () => {
     try {
@@ -96,6 +119,139 @@ const JobApplicants = () => {
     return 'bg-danger';
   };
 
+  // Filter functions
+  const applyFilters = () => {
+    let filtered = [...applicants];
+
+    // Qualification filter
+    if (filters.qualifications.length > 0) {
+      filtered = filtered.filter(applicant => 
+        filters.qualifications.some(qual => 
+          applicant.qualification?.toLowerCase().includes(qual.toLowerCase())
+        )
+      );
+    }
+
+    // Experience filter
+    if (filters.experience !== 'All Experience') {
+      filtered = filtered.filter(applicant => {
+        const exp = parseFloat(applicant.experience) || 0;
+        switch (filters.experience) {
+          case '0-1 Years':
+            return exp >= 0 && exp <= 1;
+          case '1-3 Years':
+            return exp > 1 && exp <= 3;
+          case '3+ Years':
+            return exp > 3;
+          default:
+            return true;
+        }
+      });
+    }
+
+    // Gender filter
+    if (filters.gender) {
+      filtered = filtered.filter(applicant => 
+        applicant.gender?.toLowerCase() === filters.gender.toLowerCase()
+      );
+    }
+
+    // Status filter
+    if (filters.status !== 'All') {
+      filtered = filtered.filter(applicant => applicant.status === filters.status);
+    }
+
+    // Aptitude test filter
+    if (filters.aptitudeTest !== 'All') {
+      filtered = filtered.filter(applicant => {
+        const passed = applicant.aptitute_test === 'Cleared' || (applicant.testScore && applicant.testScore >= 70);
+        return filters.aptitudeTest === 'Passed' ? passed : !passed;
+      });
+    }
+
+    // First interview filter
+    if (filters.firstInterview !== 'All') {
+      filtered = filtered.filter(applicant => {
+        const passed = applicant.interview_1 === 'Cleared';
+        return filters.firstInterview === 'Passed' ? passed : !passed;
+      });
+    }
+
+    // Second interview filter
+    if (filters.secondInterview !== 'All') {
+      filtered = filtered.filter(applicant => {
+        const passed = applicant.interview_2 === 'Cleared';
+        return filters.secondInterview === 'Passed' ? passed : !passed;
+      });
+    }
+
+    // Skill match filter
+    filtered = filtered.filter(applicant => {
+      const skillMatch = applicant.skillMatch || 0;
+      return skillMatch >= filters.skillMatchMin && skillMatch <= filters.skillMatchMax;
+    });
+
+    // Application date filter
+    if (filters.applicationDateFrom) {
+      filtered = filtered.filter(applicant => 
+        new Date(applicant.createdAt) >= new Date(filters.applicationDateFrom)
+      );
+    }
+    if (filters.applicationDateTo) {
+      filtered = filtered.filter(applicant => 
+        new Date(applicant.createdAt) <= new Date(filters.applicationDateTo)
+      );
+    }
+
+    setFilteredApplicants(filtered);
+  };
+
+  const handleFilterChange = (filterType, value) => {
+    setFilters(prev => ({
+      ...prev,
+      [filterType]: value
+    }));
+  };
+
+  const handleQualificationChange = (qualification, checked) => {
+    setFilters(prev => ({
+      ...prev,
+      qualifications: checked 
+        ? [...prev.qualifications, qualification]
+        : prev.qualifications.filter(q => q !== qualification)
+    }));
+  };
+
+  const clearFilters = () => {
+    setFilters({
+      qualifications: [],
+      experience: 'All Experience',
+      gender: '',
+      aptitudeTest: 'All',
+      firstInterview: 'All',
+      secondInterview: 'All',
+      applicationDateFrom: '',
+      applicationDateTo: '',
+      status: 'All',
+      skillMatchMin: 0,
+      skillMatchMax: 100
+    });
+  };
+
+  const getActiveFilterCount = () => {
+    let count = 0;
+    if (filters.qualifications.length > 0) count++;
+    if (filters.experience !== 'All Experience') count++;
+    if (filters.gender) count++;
+    if (filters.status !== 'All') count++;
+    if (filters.aptitudeTest !== 'All') count++;
+    if (filters.firstInterview !== 'All') count++;
+    if (filters.secondInterview !== 'All') count++;
+    if (filters.applicationDateFrom || filters.applicationDateTo) count++;
+    if (filters.skillMatchMin > 0 || filters.skillMatchMax < 100) count++;
+    return count;
+  };
+
   const handleSelectApplicant = (applicantId) => {
     setSelectedApplicants(prev => {
       if (prev.includes(applicantId)) {
@@ -107,10 +263,10 @@ const JobApplicants = () => {
   };
 
   const handleSelectAll = () => {
-    if (selectedApplicants.length === applicants.length) {
+    if (selectedApplicants.length === filteredApplicants.length) {
       setSelectedApplicants([]);
     } else {
-      setSelectedApplicants(applicants.map(applicant => applicant._id));
+      setSelectedApplicants(filteredApplicants.map(applicant => applicant._id));
     }
   };
 
@@ -178,6 +334,55 @@ const JobApplicants = () => {
     }
   };
 
+  const handleExportApplicantsData = async () => {
+    if (!id) {
+      alert('Job ID is required for export');
+      return;
+    }
+
+    try {
+      setExportLoading(true);
+      
+      const token = localStorage.getItem('token');
+      if (!token) {
+        alert('Authentication required. Please login again.');
+        navigate('/login/hr');
+        return;
+      }
+
+      const response = await axios.post(`/api/job/${id}/exportApplicants`, {
+        format: 'excel'
+      }, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.data && response.data.success !== false) {
+        alert('Applicants data has been exported and sent to your email successfully! 📧');
+      } else {
+        alert('Failed to export applicants data. Please try again.');
+      }
+
+    } catch (error) {
+      console.error('Error exporting applicants data:', error);
+      
+      if (error.response?.status === 401) {
+        alert('Authentication failed. Please login again.');
+        navigate('/login/hr');
+      } else if (error.response?.status === 403) {
+        alert('You can only export data for your own job postings.');
+      } else if (error.response?.status === 404) {
+        alert('Job not found or no applicants available for export.');
+      } else {
+        alert(error.response?.data?.message || 'Failed to export applicants data. Please try again.');
+      }
+    } finally {
+      setExportLoading(false);
+    }
+  };
+
   return (
     <div style={{ height: '100vh' }}>
       {/* Main Content */}
@@ -199,9 +404,21 @@ const JobApplicants = () => {
             </h4>
           </div>
           {!loading && !error && (
-            <span className="badge bg-primary fs-6">
-              {applicants.length} {applicants.length === 1 ? 'Applicant' : 'Applicants'}
-            </span>
+            <div className="d-flex align-items-center gap-3">
+              <span className="badge bg-primary fs-6">
+                {filteredApplicants.length} of {applicants.length} {applicants.length === 1 ? 'Applicant' : 'Applicants'}
+              </span>
+              <button
+                className={`btn btn-outline-secondary btn-sm ${showFilters ? 'active' : ''}`}
+                onClick={() => setShowFilters(!showFilters)}
+              >
+                <i className="bi bi-funnel me-2"></i>
+                Filters
+                {getActiveFilterCount() > 0 && (
+                  <span className="badge bg-danger ms-2">{getActiveFilterCount()}</span>
+                )}
+              </button>
+            </div>
           )}
         </div>
 
@@ -219,6 +436,175 @@ const JobApplicants = () => {
                 </div>
                 <div className="col-md-4 text-end">
                   <small className="text-muted">Job ID: {id}</small>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Filters Panel */}
+        {showFilters && (
+          <div className="card mb-4 border-0 shadow-sm">
+            <div className="card-header d-flex justify-content-between align-items-center">
+              <h6 className="mb-0">
+                <i className="bi bi-funnel me-2"></i>
+                Filter Applicants
+              </h6>
+              <button className="btn btn-outline-danger btn-sm" onClick={clearFilters}>
+                <i className="bi bi-x-circle me-1"></i>
+                Clear All
+              </button>
+            </div>
+            <div className="card-body">
+              <div className="row">
+                {/* Qualification Filter */}
+                <div className="col-md-3 mb-3">
+                  <label className="form-label fw-bold">Qualification</label>
+                  <div className="d-flex flex-wrap gap-2">
+                    {['MCA', 'MCS', 'ME', 'BE', 'BTech', 'BSc', 'BCA', 'MBA'].map((qual) => (
+                      <div key={qual} className="form-check">
+                        <input 
+                          type="checkbox" 
+                          className="form-check-input" 
+                          id={qual}
+                          checked={filters.qualifications.includes(qual)}
+                          onChange={(e) => handleQualificationChange(qual, e.target.checked)}
+                        />
+                        <label className="form-check-label" htmlFor={qual}>{qual}</label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Experience Filter */}
+                <div className="col-md-2 mb-3">
+                  <label className="form-label fw-bold">Experience</label>
+                  <select 
+                    className="form-select"
+                    value={filters.experience}
+                    onChange={(e) => handleFilterChange('experience', e.target.value)}
+                  >
+                    <option>All Experience</option>
+                    <option>0-1 Years</option>
+                    <option>1-3 Years</option>
+                    <option>3+ Years</option>
+                  </select>
+                </div>
+
+                {/* Status Filter */}
+                <div className="col-md-2 mb-3">
+                  <label className="form-label fw-bold">Status</label>
+                  <select 
+                    className="form-select"
+                    value={filters.status}
+                    onChange={(e) => handleFilterChange('status', e.target.value)}
+                  >
+                    <option>All</option>
+                    <option>Applied</option>
+                    <option>Test_Sent</option>
+                    <option>Interview1_Scheduled</option>
+                    <option>Interview1_Cleared</option>
+                    <option>Interview2_Scheduled</option>
+                    <option>Interview2_Cleared</option>
+                    <option>Selected</option>
+                    <option>Rejected</option>
+                  </select>
+                </div>
+
+                {/* Skill Match Range */}
+                <div className="col-md-2 mb-3">
+                  <label className="form-label fw-bold">Skill Match %</label>
+                  <div className="d-flex gap-1">
+                    <input 
+                      type="number" 
+                      className="form-control form-control-sm" 
+                      placeholder="Min"
+                      min="0"
+                      max="100"
+                      value={filters.skillMatchMin}
+                      onChange={(e) => handleFilterChange('skillMatchMin', parseInt(e.target.value) || 0)}
+                    />
+                    <input 
+                      type="number" 
+                      className="form-control form-control-sm" 
+                      placeholder="Max"
+                      min="0"
+                      max="100"
+                      value={filters.skillMatchMax}
+                      onChange={(e) => handleFilterChange('skillMatchMax', parseInt(e.target.value) || 100)}
+                    />
+                  </div>
+                </div>
+
+                {/* Application Date Filter */}
+                <div className="col-md-3 mb-3">
+                  <label className="form-label fw-bold">Application Date</label>
+                  <div className="d-flex gap-1">
+                    <input 
+                      type="date" 
+                      className="form-control form-control-sm" 
+                      value={filters.applicationDateFrom}
+                      onChange={(e) => handleFilterChange('applicationDateFrom', e.target.value)}
+                    />
+                    <input 
+                      type="date" 
+                      className="form-control form-control-sm" 
+                      value={filters.applicationDateTo}
+                      onChange={(e) => handleFilterChange('applicationDateTo', e.target.value)}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <hr />
+
+              <div className="row">
+                {/* Recruitment Status Filters */}
+                <div className="col-md-3 mb-3">
+                  <label className="form-label fw-bold">Aptitude Test</label>
+                  <select 
+                    className="form-select form-select-sm"
+                    value={filters.aptitudeTest}
+                    onChange={(e) => handleFilterChange('aptitudeTest', e.target.value)}
+                  >
+                    <option>All</option>
+                    <option>Passed</option>
+                    <option>Failed</option>
+                  </select>
+                </div>
+
+                <div className="col-md-3 mb-3">
+                  <label className="form-label fw-bold">First Interview</label>
+                  <select 
+                    className="form-select form-select-sm"
+                    value={filters.firstInterview}
+                    onChange={(e) => handleFilterChange('firstInterview', e.target.value)}
+                  >
+                    <option>All</option>
+                    <option>Passed</option>
+                    <option>Failed</option>
+                  </select>
+                </div>
+
+                <div className="col-md-3 mb-3">
+                  <label className="form-label fw-bold">Second Interview</label>
+                  <select 
+                    className="form-select form-select-sm"
+                    value={filters.secondInterview}
+                    onChange={(e) => handleFilterChange('secondInterview', e.target.value)}
+                  >
+                    <option>All</option>
+                    <option>Passed</option>
+                    <option>Failed</option>
+                  </select>
+                </div>
+
+                <div className="col-md-3 mb-3">
+                  <div className="d-flex align-items-end h-100">
+                    <small className="text-muted">
+                      Showing {filteredApplicants.length} of {applicants.length} applicants
+                    </small>
+                  </div>
                 </div>
               </div>
             </div>
@@ -243,7 +629,7 @@ const JobApplicants = () => {
         )}
 
         {/* Applicants List */}
-        {!loading && !error && applicants.length > 0 && (
+        {!loading && !error && filteredApplicants.length > 0 && (
           <>
             {/* Selection and Test Link Controls */}
             <div className="card border-0 shadow-sm mb-4">
@@ -255,7 +641,7 @@ const JobApplicants = () => {
                         className="form-check-input" 
                         type="checkbox" 
                         id="selectAll"
-                        checked={selectedApplicants.length === applicants.length && applicants.length > 0}
+                        checked={selectedApplicants.length === filteredApplicants.length && filteredApplicants.length > 0}
                         onChange={handleSelectAll}
                       />
                       <label className="form-check-label fw-bold" htmlFor="selectAll">
@@ -308,9 +694,15 @@ const JobApplicants = () => {
                 <small className="text-muted">
                   <i className="bi bi-sort-down me-1"></i>
                   Sorted by skill match percentage (highest first) • Click on applicant name to view full profile
+                  {getActiveFilterCount() > 0 && (
+                    <span className="ms-2">
+                      <i className="bi bi-funnel me-1"></i>
+                      {getActiveFilterCount()} filter(s) applied
+                    </span>
+                  )}
                 </small>
               </div>
-            {applicants.map((applicant, index) => (
+            {filteredApplicants.map((applicant, index) => (
               <div key={applicant._id} className="col-12 mb-4">
                 <div 
                   className="card border-0 shadow-sm applicant-card" 
@@ -507,11 +899,29 @@ const JobApplicants = () => {
           {/* Upload Test Results Button */}
           <div className="text-center mt-4">
             <button 
-              className="btn btn-outline-primary btn-lg"
+              className="btn btn-outline-primary btn-lg me-3"
               onClick={() => navigate(`/job/${id}/uploadTestResults`)}
             >
               <i className="bi bi-file-earmark-spreadsheet me-2"></i>
               Upload Test Results
+            </button>
+            
+            <button 
+              className="btn btn-success btn-lg"
+              onClick={handleExportApplicantsData}
+              disabled={exportLoading}
+            >
+              {exportLoading ? (
+                <>
+                  <span className="spinner-border spinner-border-sm me-2" role="status"></span>
+                  Exporting...
+                </>
+              ) : (
+                <>
+                  <i className="bi bi-download me-2"></i>
+                  Export & Email All Data
+                </>
+              )}
             </button>
           </div>
           </>
@@ -532,6 +942,33 @@ const JobApplicants = () => {
               <i className="bi bi-arrow-left me-2"></i>
               Back to Jobs
             </button>
+          </div>
+        )}
+
+        {/* No Filtered Results State */}
+        {!loading && !error && applicants.length > 0 && filteredApplicants.length === 0 && (
+          <div className="text-center py-5">
+            <i className="bi bi-funnel display-1 text-muted"></i>
+            <h4 className="mt-3 text-muted">No applicants match your filters</h4>
+            <p className="text-muted">
+              Try adjusting your filter criteria to see more results.
+            </p>
+            <div className="d-flex justify-content-center gap-3">
+              <button 
+                className="btn btn-outline-primary"
+                onClick={clearFilters}
+              >
+                <i className="bi bi-x-circle me-2"></i>
+                Clear All Filters
+              </button>
+              <button 
+                className="btn btn-primary"
+                onClick={() => setShowFilters(true)}
+              >
+                <i className="bi bi-funnel me-2"></i>
+                Adjust Filters
+              </button>
+            </div>
           </div>
         )}
       </div>

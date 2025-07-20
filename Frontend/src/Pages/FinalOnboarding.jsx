@@ -13,6 +13,7 @@ const FinalOnboarding = () => {
   const [selectedCandidates, setSelectedCandidates] = useState([]);
   const [onboardingLoading, setOnboardingLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
+  const [exportLoading, setExportLoading] = useState(false);
 
   // Fetch candidates eligible for onboarding
   useEffect(() => {
@@ -135,6 +136,51 @@ const FinalOnboarding = () => {
         return 'bg-primary';
       default:
         return 'bg-secondary';
+    }
+  };
+
+  const handleExportApplicantsData = async () => {
+    if (!jobId) {
+      setError('Job ID is required for export');
+      return;
+    }
+
+    try {
+      setExportLoading(true);
+      setError('');
+      setSuccessMessage('');
+
+      // const token = localStorage.getItem('token');
+      // if (!token) {
+      //   setError('Authentication required. Please login again.');
+      //   return;
+      // }
+
+      // Call the export API endpoint
+      const response = await axios.post(`/api/job/${jobId}/exportApplicants`, {
+        format: 'excel' 
+      });
+
+      if (response.data && response.data.success) {
+        setSuccessMessage('Applicants data has been exported and sent to your email successfully!');
+      } else {
+        setError('Failed to export applicants data. Please try again.');
+      }
+
+    } catch (error) {
+      console.error('Error exporting applicants data:', error);
+      
+      if (error.response?.status === 401) {
+        setError('Authentication failed. Please login again.');
+      } else if (error.response?.status === 403) {
+        setError('You can only export data for your own job postings.');
+      } else if (error.response?.status === 404) {
+        setError('Job not found or no applicants available for export.');
+      } else {
+        setError(error.response?.data?.message || 'Failed to export applicants data. Please try again.');
+      }
+    } finally {
+      setExportLoading(false);
     }
   };
 
@@ -430,6 +476,47 @@ const FinalOnboarding = () => {
             </div>
           </div>
         )}
+
+        {/* Export All Applicants Data */}
+        <div className="text-center mt-4 pt-4 border-top">
+          <div className="card">
+            <div className="card-body">
+              <div className="row align-items-center">
+                <div className="col-md-8">
+                  <div className="text-start">
+                    <h6 className="mb-1">
+                      <i className="bi bi-file-earmark-spreadsheet me-2 text-primary"></i>
+                      Export All Applicants Data
+                    </h6>
+                    <p className="text-muted mb-0">
+                      Export complete applicants data for this job posting and send it to your email as an Excel file. 
+                      Includes all applicant details, test scores, interview results, and current status.
+                    </p>
+                  </div>
+                </div>
+                <div className="col-md-4 text-end">
+                  <button
+                    className="btn btn-primary btn-lg"
+                    onClick={handleExportApplicantsData}
+                    disabled={exportLoading}
+                  >
+                    {exportLoading ? (
+                      <>
+                        <span className="spinner-border spinner-border-sm me-2" role="status"></span>
+                        Exporting...
+                      </>
+                    ) : (
+                      <>
+                        <i className="bi bi-download me-2"></i>
+                        Export & Email Data
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       <style jsx>{`
