@@ -14,6 +14,7 @@ const JobApplicants = () => {
   const [testLink, setTestLink] = useState('');
   const [sendingTestLink, setSendingTestLink] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
+  const [exportLoading, setExportLoading] = useState(false);
   
   // Filter states
   const [filters, setFilters] = useState({
@@ -330,6 +331,55 @@ const JobApplicants = () => {
       }
     } finally {
       setSendingTestLink(false);
+    }
+  };
+
+  const handleExportApplicantsData = async () => {
+    if (!id) {
+      alert('Job ID is required for export');
+      return;
+    }
+
+    try {
+      setExportLoading(true);
+      
+      const token = localStorage.getItem('token');
+      if (!token) {
+        alert('Authentication required. Please login again.');
+        navigate('/login/hr');
+        return;
+      }
+
+      const response = await axios.post(`/api/job/${id}/exportApplicants`, {
+        format: 'excel'
+      }, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.data && response.data.success !== false) {
+        alert('Applicants data has been exported and sent to your email successfully! 📧');
+      } else {
+        alert('Failed to export applicants data. Please try again.');
+      }
+
+    } catch (error) {
+      console.error('Error exporting applicants data:', error);
+      
+      if (error.response?.status === 401) {
+        alert('Authentication failed. Please login again.');
+        navigate('/login/hr');
+      } else if (error.response?.status === 403) {
+        alert('You can only export data for your own job postings.');
+      } else if (error.response?.status === 404) {
+        alert('Job not found or no applicants available for export.');
+      } else {
+        alert(error.response?.data?.message || 'Failed to export applicants data. Please try again.');
+      }
+    } finally {
+      setExportLoading(false);
     }
   };
 
@@ -849,11 +899,29 @@ const JobApplicants = () => {
           {/* Upload Test Results Button */}
           <div className="text-center mt-4">
             <button 
-              className="btn btn-outline-primary btn-lg"
+              className="btn btn-outline-primary btn-lg me-3"
               onClick={() => navigate(`/job/${id}/uploadTestResults`)}
             >
               <i className="bi bi-file-earmark-spreadsheet me-2"></i>
               Upload Test Results
+            </button>
+            
+            <button 
+              className="btn btn-success btn-lg"
+              onClick={handleExportApplicantsData}
+              disabled={exportLoading}
+            >
+              {exportLoading ? (
+                <>
+                  <span className="spinner-border spinner-border-sm me-2" role="status"></span>
+                  Exporting...
+                </>
+              ) : (
+                <>
+                  <i className="bi bi-download me-2"></i>
+                  Export & Email All Data
+                </>
+              )}
             </button>
           </div>
           </>
